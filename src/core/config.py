@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path='/app/.env')
+load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/fastApiProject/src/.env')
 
 
 class Settings:
