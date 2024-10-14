@@ -1,7 +1,7 @@
 from http.client import HTTPResponse
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from starlette import status
 
 from src.application.use_cases.auth_use_case import AuthUseCase
@@ -14,7 +14,7 @@ auth_router = APIRouter(
 )
 
 @auth_router.post('/login', response_model=Tokens)
-async def login(form_data: Annotated[LoginRequestForm, Depends()], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
+async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
     """
     CONTROLLER: Log in a user with provided credentials. Passes the query to the 'AuthUseCase'.
 
@@ -67,7 +67,7 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
                             detail="An unexpected error occurred during token refresh.")
 
 @auth_router.post('/register')
-async def register(data: RegisterRequestForm, auth_use_case: Annotated[AuthUseCase, Depends()]):
+async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]):
     """
     CONTROLLER: Register new user with provided data. Passes the query to the 'AuthUseCase'.
 
