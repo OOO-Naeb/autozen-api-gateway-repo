@@ -4,7 +4,7 @@ from jwt import PyJWTError
 from pydantic import ValidationError
 from starlette import status
 
-from src.core.security import oauth2_refresh_token_scheme
+from src.core.oauth_schemas import oauth2_refresh_token_scheme
 from src.domain.schemas import Tokens, RefreshToken, RegisterRequestForm, LoginRequestForm
 from src.core.config import settings
 

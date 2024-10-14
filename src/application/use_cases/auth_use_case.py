@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from starlette import status
 
 from src.core.config import settings
-from src.core.security import oauth2_access_token_scheme, oauth2_refresh_token_scheme
+from src.core.oauth_schemas import oauth2_access_token_scheme, oauth2_refresh_token_scheme
 from src.infrastructure.services.auth_adapter import AuthAdapter
 from src.domain.schemas import Tokens, TokenData, AccessToken, RefreshToken, LoginRequestForm, RegisterRequestForm
 

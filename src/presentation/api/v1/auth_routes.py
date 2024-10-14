@@ -6,7 +6,7 @@ from jwt import PyJWTError
 from starlette import status
 
 from src.application.use_cases.auth_use_case import AuthUseCase
-from src.core.security import oauth2_refresh_token_scheme
+from src.core.oauth_schemas import oauth2_refresh_token_scheme
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
 
 auth_router = APIRouter(
