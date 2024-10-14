@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from starlette import status
 
 from src.application.use_cases.auth_use_case import AuthUseCase
-from src.core.oauth_schemas import oauth2_refresh_token_schema
+from src.core.oauth_schemas import oauth2_token_schema
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
 
 auth_router = APIRouter(
@@ -40,7 +40,7 @@ async def login(form_data: Annotated[LoginRequestForm, Depends()], auth_use_case
 
 
 @auth_router.post("/refresh", response_model=Tokens)
-async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_refresh_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
+async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
     """
     CONTROLLER: Return a new pair of access and refresh tokens. Passes the query to the 'AuthUseCase'.
 

@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from starlette import status
 
 from src.core.config import settings
-from src.core.oauth_schemas import oauth2_access_token_scheme, oauth2_refresh_token_scheme
+from src.core.oauth_schemas import oauth2_token_schema
 from src.infrastructure.services.auth_adapter import AuthAdapter
 from src.domain.schemas import Tokens, TokenData, AccessToken, RefreshToken, LoginRequestForm, RegisterRequestForm
 
@@ -32,7 +32,7 @@ class AuthUseCase:
         """
         return await self.auth_adapter.login(data)
 
-    async def refresh(self, refresh_token: Annotated[RefreshToken, Depends(oauth2_refresh_token_scheme)]) -> Tokens:
+    async def refresh(self, refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)]) -> Tokens:
         """
         USE CASE METHOD: Return a new pair of access and refresh tokens. Passes the query through to the 'AuthAdapter'.
 
@@ -58,7 +58,7 @@ class AuthUseCase:
 
     @staticmethod
     async def get_current_user(security_scopes: SecurityScopes,
-                               access_token: AccessToken = Depends(oauth2_access_token_scheme)) -> TokenData:
+                               access_token: AccessToken = Depends(oauth2_token_schema)) -> TokenData:
         """
         Receive a user's data from the provided access token. It decodes a JWT access token and analyzing security scopes with scopes in the token.
 

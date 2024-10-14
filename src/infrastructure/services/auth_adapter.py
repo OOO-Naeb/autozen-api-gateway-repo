@@ -4,7 +4,7 @@ from jwt import PyJWTError
 from pydantic import ValidationError
 from starlette import status
 
-from src.core.oauth_schemas import oauth2_refresh_token_scheme
+from src.core.oauth_schemas import oauth2_token_schema
 from src.domain.schemas import Tokens, RefreshToken, RegisterRequestForm, LoginRequestForm
 from src.core.config import settings
 
@@ -42,7 +42,7 @@ class AuthAdapter:
                 raise ValueError(f"Unhandled error in AuthAdapter: {str(e)}.")
 
     @staticmethod
-    async def refresh(refresh_token: RefreshToken = Depends(oauth2_refresh_token_scheme)) -> Tokens:
+    async def refresh(refresh_token: RefreshToken = Depends(oauth2_token_schema)) -> Tokens:
         """
         ADAPTER METHOD: Refresh a user's access and refresh tokens.
 
