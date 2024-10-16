@@ -26,7 +26,9 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
         Tokens: A JSON object containing access, refresh tokens and token type.
 
     Raises:
-        HTTPException: If email or phone number, or password is invalid.
+        HTTPException: If provided email or phone number, or password is invalid (status code 401).
+        HTTPException: If the login service is unavailable (status code 503).
+        HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
         tokens = await auth_use_case.login(form_data)
@@ -52,7 +54,9 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
         Tokens: A JSON object containing access, refresh tokens and token type.
 
     Raises:
-        HTTPException: If provided refresh token is invalid or damaged.
+        HTTPException: If provided refresh token is invalid (status code 401).
+        HTTPException: If the refresh service is unavailable (status code 503).
+        HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
         tokens = await auth_use_case.refresh(refresh_token)
@@ -80,14 +84,17 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
         HTTPResponse: A JSON object containing success, error message and status code.
 
     Raises:
-        HTTPException: If provided data doesn't match the requirements (RegisterRequestForm) or in case of server error.
+        HTTPException: If there's a record in DB with the same data (status code 409).
+        HTTPException: If provided data doesn't match the requirements (status code 400).
+        HTTPException: If the register service is unavailable (status code 503).
+        HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
         result = await auth_use_case.register(data)
         return result
     except ValueError as e:
         if "User already exists" in str(e):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Duplicate record. This email or phone number is already taken.')
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:

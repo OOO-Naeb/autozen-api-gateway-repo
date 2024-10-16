@@ -23,6 +23,9 @@ class AuthAdapter:
 
         Raises:
             ValueError: If email or phone number, or password is invalid.
+            HTTPException: If the login service is unavailable (status code 503).
+            ValueError: If the provided response from Auth microservice is not valid.
+            ValueError: If there's some unexpected error occurs.
         """
         async with httpx.AsyncClient() as client:
             try:
@@ -53,7 +56,10 @@ class AuthAdapter:
             Tokens: A JSON object containing access and refresh tokens.
 
         Raises:
-            HTTPException: If there is an error while trying to validate the refresh token.
+            ValueError: If provided refresh token is invalid.
+            HTTPException: If the refresh service is unavailable (status code 503).
+            ValueError: If the provided response from Auth microservice is not valid.
+            ValueError: If there's some unexpected error occurs.
         """
         async with httpx.AsyncClient() as client:
             try:
@@ -85,7 +91,11 @@ class AuthAdapter:
             HTTPResponse: A JSON object containing success, error message and status code.
 
         Raises:
-            HTTPException: If there is an error while trying to validate the data or register/create a new record in the DB.
+            ValueError: If provided data is invalid.
+            ValueError: Duplicate record. If email or phone number is already taken.
+            HTTPException: If the register service is unavailable (status code 503).
+            ValueError: If the provided response from Auth microservice is not valid.
+            ValueError: If there's some unexpected error occurs.
         """
         async with httpx.AsyncClient() as client:
             try:
