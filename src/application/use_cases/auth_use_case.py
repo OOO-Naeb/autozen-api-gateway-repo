@@ -1,6 +1,4 @@
-import re
 from http.client import HTTPResponse
-from re import Match
 from typing import List, Annotated
 
 import jwt
@@ -12,7 +10,7 @@ from starlette import status
 
 from src.core.config import settings
 from src.core.oauth_schemas import oauth2_token_schema
-from src.infrastructure.services.auth_adapter import AuthAdapter
+from src.infrastructure.adapters.auth_adapter import AuthAdapter
 from src.domain.schemas import Tokens, TokenData, AccessToken, RefreshToken, LoginRequestForm, RegisterRequestForm
 
 
