@@ -1,21 +1,16 @@
 from http.client import HTTPResponse
-from typing import List, Annotated
+from typing import Annotated
 
-import jwt
-from fastapi import HTTPException, Security, Depends
-from fastapi.security import SecurityScopes
-from jwt import PyJWTError
-from pydantic import ValidationError
-from starlette import status
+from fastapi import Depends
 
-from src.core.config import settings
 from src.core.oauth_schemas import oauth2_token_schema
-from src.infrastructure.adapters.auth_adapter import AuthAdapter
-from src.domain.schemas import Tokens, TokenData, AccessToken, RefreshToken, LoginRequestForm, RegisterRequestForm
+from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
+from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapter
+from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
 
 class AuthUseCase:
-    def __init__(self, auth_adapter: Annotated[AuthAdapter, Depends()]) -> None:
+    def __init__(self, auth_adapter: Annotated[IAuthAdapter, Depends(RabbitMQAuthAdapter)]) -> None:
         self.auth_adapter = auth_adapter
 
     async def login(self, data: LoginRequestForm) -> Tokens:
@@ -53,48 +48,3 @@ class AuthUseCase:
             HTTPResponse: A JSON object containing success, error message and status code.
         """
         return await self.auth_adapter.register(data)
-
-    @staticmethod
-    async def get_current_user(security_scopes: SecurityScopes,
-                               access_token: AccessToken = Depends(oauth2_token_schema)) -> TokenData:
-        """
-        Receive a user's data from the provided access token. It decodes a JWT access token and analyzing security scopes with scopes in the token.
-
-        Args:
-            security_scopes (SecurityScopes): The security scopes that the user tries to get access to.
-            access_token (AccessToken): Provided access token to validate.
-
-        Returns:
-            TokenData: A JSON object containing email, list of roles (List[str]).
-        """
-        try:
-            payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            email: str = payload.get("sub")
-            roles: List[str] = payload.get("roles", [])
-
-            if email is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            token_data = TokenData(email=email, roles=roles)
-        except (PyJWTError, ValidationError):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        for scope in security_scopes.scopes:
-            if scope not in token_data.roles:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not allowed",
-                )
-
-        return token_data
-
-    @staticmethod
-    async def get_current_active_user(current_user: TokenData = Security(get_current_user, scopes=[])):
-        return current_user

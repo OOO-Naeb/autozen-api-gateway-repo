@@ -5,6 +5,8 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from starlette import status
 
 from src.application.use_cases.auth_use_case import AuthUseCase
+from src.core.exceptions import SourceTimeoutException, NotFoundException, \
+    UnauthorizedException, AccessDeniedException, SourceUnavailableException, ConflictException, UnhandledException
 from src.core.oauth_schemas import oauth2_token_schema
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
 
@@ -33,11 +35,14 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
     try:
         tokens = await auth_use_case.login(form_data)
         return tokens
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except HTTPException:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Currently, login service is not available. Try again later.')
-    except Exception:
+    except UnauthorizedException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
+    except SourceUnavailableException:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail='Currently, login service is not available. Try again later.')
+    except SourceTimeoutException:
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Login service took too long to respond.")
+    except UnhandledException or Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
 
 
@@ -61,14 +66,19 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
     try:
         tokens = await auth_use_case.refresh(refresh_token)
         return tokens
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except HTTPException:
+    except UnauthorizedException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
+    except SourceUnavailableException:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Currently, tokens refresh service is not available. Try again later.')
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="An unexpected error occurred during token refresh.")
+    except SourceTimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Token refresh service took too long to respond."
+        )
+    except UnhandledException or Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+
 
 @auth_router.post('/register')
 async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]):
@@ -84,21 +94,27 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
         HTTPResponse: A JSON object containing success, error message and status code.
 
     Raises:
-        HTTPException: If there's a record in DB with the same data (status code 409).
-        HTTPException: If provided data doesn't match the requirements (status code 400).
-        HTTPException: If the register service is unavailable (status code 503).
-        HTTPException: If an unexpected error occurs on the server (status code 500).
+        HTTPException (503): When RabbitMQ service is not available.
+        HTTPException (504): When waiting time from the 'AuthService' microservice exceeds the timeout (5s).
+        HTTPException (404): If user or source was not found.
+        HTTPException (409): When given email or phone number is already in the DB.
+        HTTPException (500): If unknown exception occurs.
     """
     try:
         result = await auth_use_case.register(data)
         return result
-    except ValueError as e:
-        if "User already exists" in str(e):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Duplicate record. This email or phone number is already taken.')
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except HTTPException:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Currently, register service is not available. Try again later.')
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
-
+    except SourceUnavailableException:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Currently, the registration service is not available. Please try again later.")
+    except SourceTimeoutException:
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                            detail="The registration service took too long to respond. Please try again later.")
+    except NotFoundException:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Source not found.")
+    except ConflictException:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="This email or phone number is already taken.")
+    except UnhandledException or Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An unexpected error occurred during registration.")

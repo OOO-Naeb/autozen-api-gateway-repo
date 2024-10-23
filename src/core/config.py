@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/fastApiProject/src/.env')
+load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/autozen-api-gateway/src/.env')
 
 
 class Settings:
