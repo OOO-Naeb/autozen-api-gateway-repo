@@ -5,12 +5,14 @@ load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/autozen-api-gateway/src/.
 
 
 class Settings:
-    SECRET_KEY = os.environ.get('SECRET_KEY')
-    ALGORITHM = os.environ.get('ALGORITHM')
-    ACCESS_TOKEN_EXPIRE_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRE_MINUTES')
     AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8001')
     USER_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8002')
     SCOPES = os.getenv("SCOPES", "")
+
+    JWT_PUBLIC_SECRET_KEY = os.environ.get('JWT_PUBLIC_SECRET_KEY')
+    JWT_ALGORITHM = os.environ.get('ALGORITHM')
+
+    print(JWT_PUBLIC_SECRET_KEY)
 
     @property
     def get_parsed_scopes(self):

@@ -7,7 +7,7 @@ import pika
 from pika import exceptions
 from starlette.responses import JSONResponse
 
-from src.core.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
+from src.domain.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
     ConflictException, UnauthorizedException, UnhandledException
 from src.domain.schemas import Tokens, RefreshToken, RegisterRequestForm, LoginRequestForm
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
@@ -124,15 +124,15 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
         return Tokens(**response_body)
 
-    async def refresh(self, refresh_token: RefreshToken) -> Tokens:
+    async def refresh(self, refresh_token_payload: dict) -> Tokens:
         """
         ADAPTER METHOD: Refresh a user's tokens by sending the request to 'AuthService' through RabbitMQ with RPC.
 
         Args:
-            refresh_token (RefreshToken): The user's current refresh token.
+            refresh_token_payload (dict): The user's refresh token payload.
 
         Returns:
-            Tokens: A JSON object containing access, refresh tokens and token type.
+            Tokens: A JSON object containing access and refresh tokens.
 
         Raises:
             UnauthorizedException (401): If the refresh token is invalid.
@@ -140,7 +140,8 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             SourceTimeoutException (504): When waiting time from 'AuthService' exceeds the timeout.
             UnhandledException (500): If unknown exception occurs.
         """
-        status_code, response_body = await self.rpc_call(routing_key='AUTH.refresh', body=refresh_token.model_dump())
+        print("PAYLOAD TO SEND:", refresh_token_payload)
+        status_code, response_body = await self.rpc_call(routing_key='AUTH.refresh', body=refresh_token_payload)
 
         if status_code == 401:
             raise UnauthorizedException(detail="Invalid refresh token.")

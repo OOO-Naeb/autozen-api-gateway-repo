@@ -1,17 +1,20 @@
+from http import HTTPStatus
 from http.client import HTTPResponse
 from typing import Annotated
 
 from fastapi import Depends
+from starlette.responses import JSONResponse
 
-from src.core.oauth_schemas import oauth2_token_schema
+from src.core.jwt_validator import JWTValidator
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
 from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapter
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
 
 class AuthUseCase:
-    def __init__(self, auth_adapter: Annotated[IAuthAdapter, Depends(RabbitMQAuthAdapter)]) -> None:
+    def __init__(self, auth_adapter: Annotated[IAuthAdapter, Depends(RabbitMQAuthAdapter)], jwt_validator: Annotated[JWTValidator, Depends()]) -> None:
         self.auth_adapter = auth_adapter
+        self.jwt_validator = jwt_validator
 
     async def login(self, data: LoginRequestForm) -> Tokens:
         """
@@ -25,7 +28,7 @@ class AuthUseCase:
         """
         return await self.auth_adapter.login(data)
 
-    async def refresh(self, refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)]) -> Tokens:
+    async def refresh(self, refresh_token: str) -> Tokens:
         """
         USE CASE METHOD: Return a new pair of access and refresh tokens. Passes the query through to the 'AuthAdapter'.
 
@@ -35,7 +38,10 @@ class AuthUseCase:
         Returns:
             Tokens: A JSON object containing access, refresh tokens and token type.
         """
-        return await self.auth_adapter.refresh(refresh_token)
+        refresh_token_payload = await self.jwt_validator.validate_jwt_token(refresh_token, required_token_type='refresh')
+        print("Token was validated in AuthUseCase.")
+
+        return await self.auth_adapter.refresh(refresh_token_payload)
 
     async def register(self, data: RegisterRequestForm):
         """
@@ -48,3 +54,9 @@ class AuthUseCase:
             HTTPResponse: A JSON object containing success, error message and status code.
         """
         return await self.auth_adapter.register(data)
+
+    async def test_token(self, access_token: str):
+        access_token_payload = await self.jwt_validator.validate_jwt_token(access_token, required_token_type='access')
+        print("Token was validated in AuthUseCase.")
+
+        return JSONResponse(status_code=HTTPStatus.OK, content=access_token_payload)

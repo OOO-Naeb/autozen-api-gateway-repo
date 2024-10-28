@@ -3,7 +3,7 @@ class NotFoundException(Exception):
         self.detail = detail
 
 class UnauthorizedException(Exception):
-    def __init__(self, detail: str = "Unauthorized. Access Denied."):
+    def __init__(self, detail: str = "Unauthorized. Token has expired or invalid. Access Denied."):
         self.detail = detail
 
 class AccessDeniedException(Exception):

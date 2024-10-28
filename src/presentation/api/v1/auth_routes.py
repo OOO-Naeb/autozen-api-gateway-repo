@@ -5,10 +5,10 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from starlette import status
 
 from src.application.use_cases.auth_use_case import AuthUseCase
-from src.core.exceptions import SourceTimeoutException, NotFoundException, \
-    UnauthorizedException, AccessDeniedException, SourceUnavailableException, ConflictException, UnhandledException
-from src.core.oauth_schemas import oauth2_token_schema
-from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
+from src.domain.exceptions import SourceTimeoutException, NotFoundException, \
+    UnauthorizedException, SourceUnavailableException, ConflictException, UnhandledException
+from src.domain.oauth_schemas import oauth2_token_schema
+from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, AccessToken
 
 auth_router = APIRouter(
     tags=["Auth"],
@@ -64,7 +64,7 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
         HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
-        tokens = await auth_use_case.refresh(refresh_token)
+        tokens = await auth_use_case.refresh(str(refresh_token))
         return tokens
     except UnauthorizedException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
@@ -118,3 +118,22 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
     except UnhandledException or Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="An unexpected error occurred during registration.")
+
+
+@auth_router.post('/test_token')
+async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]):
+    try:
+        tokens = await auth_use_case.test_token(str(access_token))
+        return tokens
+    except UnauthorizedException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
+    except SourceUnavailableException:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail='Currently, tokens refresh service is not available. Try again later.')
+    except SourceTimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Token refresh service took too long to respond."
+        )
+    except UnhandledException or Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
