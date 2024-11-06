@@ -9,6 +9,25 @@ class User(BaseModel):
     middle_name: str
     password: str
 
+class UserFromDB(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    middle_name: str
+    email: EmailStr
+    phone_number: str
+    role: str
+
+
+class UserToDB(BaseModel):
+    first_name: str
+    last_name: str
+    middle_name: str
+    email: EmailStr
+    phone_number: str
+    password: str
+    role: str
+
 class AccessToken(BaseModel):
     access_token: str
 
@@ -22,6 +41,7 @@ class RegisterRequestForm(BaseModel):
     first_name: str
     last_name: str
     middle_name: str
+    email: EmailStr
     phone_number: str
     password: str
     role: str

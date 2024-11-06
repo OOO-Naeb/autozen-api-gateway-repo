@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 from src.core.config import settings
 from src.domain.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
     ConflictException, UnauthorizedException, UnhandledException
-from src.domain.schemas import Tokens, RegisterRequestForm, LoginRequestForm
+from src.domain.schemas import Tokens, RegisterRequestForm, LoginRequestForm, UserFromDB
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
 
@@ -19,7 +19,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         self.connection = None
         self.channel = None
         self.exchange = None
-        self.exchange_name = 'AUTH-EXCHANGE.direct'
+        self.exchange_name = 'GATEWAY-AUTH-EXCHANGE.direct'
 
     async def connect(self):
         """
@@ -65,6 +65,9 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         callback_queue = await self.channel.declare_queue(exclusive=True)
         correlation_id = str(uuid.uuid4())
 
+        # Dev logs
+        print("Correlation ID from sender ->", correlation_id)
+
         rabbitmq_response_future = asyncio.get_event_loop().create_future()
 
         async def on_response(response_message: aio_pika.IncomingMessage):
@@ -96,6 +99,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             self.logger.error(
                 f"Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call()."
             )
+
             raise SourceTimeoutException(detail="Timeout waiting for response from 'AuthService' microservice.")
 
     async def login(self, data: LoginRequestForm) -> Tokens:
@@ -156,7 +160,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
         return Tokens(**response_body)
 
-    async def register(self, data: RegisterRequestForm) -> JSONResponse:
+    async def register(self, data: RegisterRequestForm) -> UserFromDB:
         """
         ADAPTER METHOD: Register a user by sending the request to 'AuthService' through RabbitMQ with RPC.
 
@@ -182,5 +186,5 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             self.logger.error(f"Unknown error in RabbitMQAuthAdapter during REGISTERING: {status_code} | {response_body}")
             raise UnhandledException()
 
-        return JSONResponse(status_code=status_code, content=response_body)
+        return UserFromDB(**response_body)
 

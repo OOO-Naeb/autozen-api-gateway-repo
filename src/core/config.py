@@ -1,21 +1,22 @@
 import os
 from dotenv import load_dotenv
+from pydantic.v1 import BaseSettings
 
 load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/autozen-api-gateway/src/.env')
 
 
-class Settings:
-    AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8001')
-    USER_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8002')
-    SCOPES = os.getenv("SCOPES", "")
+class Settings(BaseSettings):
+    AUTH_SERVICE_URL: str = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8001')
+    USER_SERVICE_URL: str = os.getenv('AUTH_SERVICE_URL', 'http://localhost:8002')
+    SCOPES: str = os.getenv("SCOPES", "")
 
-    JWT_PUBLIC_SECRET_KEY = os.environ.get('JWT_PUBLIC_SECRET_KEY')
-    JWT_ALGORITHM = os.environ.get('ALGORITHM')
+    JWT_PUBLIC_SECRET_KEY: str = os.environ.get('JWT_PUBLIC_SECRET_KEY')
+    JWT_ALGORITHM: str = os.environ.get('ALGORITHM')
 
-    RABBITMQ_LOGIN = os.getenv('RABBITMQ_LOGIN')
-    RABBITMQ_PASSWORD = os.getenv('RABBITMQ_PASSWORD')
-    RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
-    RABBITMQ_PORT = os.getenv('RABBITMQ_PORT')
+    RABBITMQ_LOGIN: str = os.getenv('RABBITMQ_LOGIN')
+    RABBITMQ_PASSWORD: str = os.getenv('RABBITMQ_PASSWORD')
+    RABBITMQ_HOST: str = os.getenv('RABBITMQ_HOST')
+    RABBITMQ_PORT: int = int(os.getenv('RABBITMQ_PORT'))
 
     print(JWT_PUBLIC_SECRET_KEY)
 
