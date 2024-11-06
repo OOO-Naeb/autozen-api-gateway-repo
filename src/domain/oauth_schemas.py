@@ -4,5 +4,5 @@ from src.core.config import settings
 
 oauth2_token_schema = OAuth2PasswordBearer(
     tokenUrl="api/v1/auth/login",
-    scopes=settings.get_parsed_scopes
+    scopes=settings.parsed_scopes
 )

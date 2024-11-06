@@ -1,15 +1,15 @@
+import asyncio
 import json
 import logging
 import uuid
-import time
 
-import pika
-from pika import exceptions
+import aio_pika
 from starlette.responses import JSONResponse
 
+from src.core.config import settings
 from src.domain.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
     ConflictException, UnauthorizedException, UnhandledException
-from src.domain.schemas import Tokens, RefreshToken, RegisterRequestForm, LoginRequestForm
+from src.domain.schemas import Tokens, RegisterRequestForm, LoginRequestForm
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
 
@@ -18,7 +18,8 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         self.logger = logging.getLogger(__name__)
         self.connection = None
         self.channel = None
-        self.exchange_name = 'AUTH.direct'
+        self.exchange = None
+        self.exchange_name = 'AUTH-EXCHANGE.direct'
 
     async def connect(self):
         """
@@ -27,13 +28,21 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         Raises:
             SourceUnavailableException: When RabbitMQ service is not available.
         """
-        if self.connection is None or self.channel is None:
+        if not self.connection or self.connection.is_closed:
             try:
-                self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-                self.channel = self.connection.channel()
-                self.channel.exchange_declare(exchange=self.exchange_name, exchange_type='direct', durable=True)
-            except pika.exceptions.AMQPConnectionError:
-                self.logger.error(f"RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().")
+                self.connection = await aio_pika.connect_robust(
+                    settings.rabbitmq_url,
+                    timeout=10,
+                    client_properties={'client_name': 'API Gateway Service'}
+                )
+                self.channel = await self.connection.channel()
+                self.exchange = await self.channel.declare_exchange(
+                    self.exchange_name, aio_pika.ExchangeType.DIRECT, durable=True
+                )
+            except aio_pika.exceptions.AMQPConnectionError:
+                self.logger.error(
+                    f"RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect()."
+                )
                 raise SourceUnavailableException(detail="RabbitMQ service is unavailable.")
 
     async def rpc_call(self, routing_key: str, body: dict, timeout: int = 5) -> tuple:
@@ -53,47 +62,41 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         """
         await self.connect()
 
-        queue_for_responses = self.channel.queue_declare(queue='', exclusive=True)
-        callback_queue = queue_for_responses.method.queue
+        callback_queue = await self.channel.declare_queue(exclusive=True)
+        correlation_id = str(uuid.uuid4())
 
-        corr_id = str(uuid.uuid4())
+        rabbitmq_response_future = asyncio.get_event_loop().create_future()
 
-        self.channel.basic_publish(
-            exchange=self.exchange_name,
+        async def on_response(response_message: aio_pika.IncomingMessage):
+            if response_message.correlation_id == correlation_id:
+                rabbitmq_response_future.set_result(response_message)
+
+        await callback_queue.consume(on_response)
+
+        await self.exchange.publish(
+            aio_pika.Message(
+                body=json.dumps(body).encode(),
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                correlation_id=correlation_id,
+                reply_to=callback_queue.name,
+            ),
             routing_key=routing_key,
-            body=json.dumps(body),
-            properties=pika.BasicProperties(
-                reply_to=callback_queue,
-                correlation_id=corr_id,
-                delivery_mode=2,
+        )
+
+        try:
+            message = await asyncio.wait_for(rabbitmq_response_future, timeout)
+
+            response = json.loads(message.body.decode())
+            status_code = response.get("status_code", 500)
+            response_body = response.get("body", {})
+
+            return status_code, response_body
+
+        except asyncio.TimeoutError:
+            self.logger.error(
+                f"Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call()."
             )
-        )
-
-        response = None
-        status_code = None
-        response_body = None
-        response_start_time = time.time()
-
-        def on_response(ch, method, props, body):
-            nonlocal response, status_code, response_body
-            if props.correlation_id == corr_id:
-                response = json.loads(body.decode('utf-8'))
-                status_code = response.get("status_code", 500)
-                response_body = response.get("body", {})
-
-        self.channel.basic_consume(
-            queue=callback_queue,
-            on_message_callback=on_response,
-            auto_ack=True
-        )
-
-        while response is None:
-            self.connection.process_data_events()
-            if time.time() > response_start_time + timeout:
-                self.logger.error(f"Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call().")
-                raise SourceTimeoutException(detail="Timeout waiting for response from 'AuthService' microservice.")
-
-        return status_code, response_body
+            raise SourceTimeoutException(detail="Timeout waiting for response from 'AuthService' microservice.")
 
     async def login(self, data: LoginRequestForm) -> Tokens:
         """
