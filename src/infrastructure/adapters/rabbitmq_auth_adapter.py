@@ -62,7 +62,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         """
         await self.connect()
 
-        callback_queue = await self.channel.declare_queue(exclusive=True)
+        callback_queue = await self.channel.declare_queue(name=f'FOR-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True)
         correlation_id = str(uuid.uuid4())
 
         # Dev logs
@@ -160,7 +160,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
         return Tokens(**response_body)
 
-    async def register(self, data: RegisterRequestForm) -> UserFromDB:
+    async def register(self, data: RegisterRequestForm) -> tuple[int, UserFromDB]:
         """
         ADAPTER METHOD: Register a user by sending the request to 'AuthService' through RabbitMQ with RPC.
 
@@ -186,5 +186,5 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             self.logger.error(f"Unknown error in RabbitMQAuthAdapter during REGISTERING: {status_code} | {response_body}")
             raise UnhandledException()
 
-        return UserFromDB(**response_body)
+        return status_code, UserFromDB(**response_body)
 

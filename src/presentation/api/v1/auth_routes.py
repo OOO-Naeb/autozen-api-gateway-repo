@@ -1,8 +1,8 @@
-from http.client import HTTPResponse
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from starlette import status
+from starlette.responses import JSONResponse
 
 from src.application.use_cases.auth_use_case import AuthUseCase
 from src.domain.exceptions import SourceTimeoutException, NotFoundException, \
@@ -81,17 +81,16 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
 
 
 @auth_router.post('/register')
-async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]):
+async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Register new user with provided data. Passes the query to the 'AuthUseCase'.
-
 
     Args:
         data (RegisterRequestForm): The data to register.
         auth_use_case (AuthUseCase): The authentication use-case.
 
     Returns:
-        HTTPResponse: A JSON object containing success, error message and status code.
+        JSONResponse: A JSON object containing success, error message and status code.
 
     Raises:
         HTTPException (503): When RabbitMQ service is not available.
@@ -102,7 +101,13 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
     """
     try:
         result = await auth_use_case.register(data)
-        return result
+        status_code, user_data = result
+
+        return JSONResponse(
+            status_code=int(status_code),
+            content={"success": True, "user": user_data.dict(), "message": "User registered successfully"}
+        )
+
     except SourceUnavailableException:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="Currently, the registration service is not available. Please try again later.")
@@ -115,9 +120,9 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
     except ConflictException:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="This email or phone number is already taken.")
-    except UnhandledException or Exception:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="An unexpected error occurred during registration.")
+                            detail=f"An unexpected error occurred during registration: {str(e)}")
 
 
 @auth_router.post('/test_token')
