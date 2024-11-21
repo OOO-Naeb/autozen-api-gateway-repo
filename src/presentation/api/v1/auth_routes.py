@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends, Body
@@ -16,7 +17,7 @@ auth_router = APIRouter(
 )
 
 @auth_router.post('/login', response_model=Tokens)
-async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
+async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Log in a user with provided credentials. Passes the query to the 'AuthUseCase'.
 
@@ -25,7 +26,7 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
         auth_use_case (AuthUseCase): The authentication use-case.
 
     Returns:
-        Tokens: A JSON object containing access, refresh tokens and token type.
+        JSONResponse: A JSON object containing access, refresh tokens and token type.
 
     Raises:
         HTTPException: If provided email or phone number, or password is invalid (status code 401).
@@ -34,7 +35,20 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
     """
     try:
         tokens = await auth_use_case.login(form_data)
-        return tokens
+        access_token = tokens.access_token
+        refresh_token = tokens.refresh_token
+
+        return JSONResponse(
+            status_code=HTTPStatus.OK,
+            content={
+                'success': True,
+                'message': 'Logged in succesfully.',
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'token_type': 'Bearer',
+            },
+        )
+
     except UnauthorizedException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
     except SourceUnavailableException:
@@ -47,7 +61,7 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
 
 
 @auth_router.post("/refresh", response_model=Tokens)
-async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> Tokens:
+async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Return a new pair of access and refresh tokens. Passes the query to the 'AuthUseCase'.
 
@@ -56,7 +70,7 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
         auth_use_case (AuthUseCase): The authentication use-case.
 
     Returns:
-        Tokens: A JSON object containing access, refresh tokens and token type.
+        JSONResponse: A JSON object containing access, refresh tokens and token type.
 
     Raises:
         HTTPException: If provided refresh token is invalid (status code 401).
@@ -65,7 +79,20 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
     """
     try:
         tokens = await auth_use_case.refresh(str(refresh_token))
-        return tokens
+        access_token = tokens.access_token
+        refresh_token = tokens.refresh_token
+
+        return JSONResponse(
+            status_code=HTTPStatus.OK,
+            content={
+                'success': True,
+                'message': 'Tokens have been refreshed successfully.',
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'token_type': 'Bearer',
+            },
+        )
+
     except UnauthorizedException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
     except SourceUnavailableException:
@@ -105,7 +132,7 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
 
         return JSONResponse(
             status_code=int(status_code),
-            content={"success": True, "user": user_data.dict(), "message": "User registered successfully"}
+            content={"success": True, "user": user_data.dict(), "message": "User registered successfully."}
         )
 
     except SourceUnavailableException:
@@ -129,7 +156,9 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
 async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]):
     try:
         tokens = await auth_use_case.test_token(str(access_token))
+
         return tokens
+
     except UnauthorizedException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e.detail))
     except SourceUnavailableException:
