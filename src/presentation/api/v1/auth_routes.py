@@ -42,7 +42,7 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
             status_code=HTTPStatus.OK,
             content={
                 'success': True,
-                'message': 'Logged in succesfully.',
+                'message': 'Logged in successfully.',
                 'access_token': access_token,
                 'refresh_token': refresh_token,
                 'token_type': 'Bearer',
