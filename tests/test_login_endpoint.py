@@ -4,10 +4,7 @@ from starlette import status
 from src.domain.exceptions import UnauthorizedException, SourceUnavailableException, SourceTimeoutException, \
     UnhandledException
 from src.domain.schemas import Tokens
-from tests.fixtures.login_endpoint_fixtures import login_test_helper
-
-TEST_ACCESS_TOKEN = "test_access_token"
-TEST_REFRESH_TOKEN = "test_refresh_token"
+from tests.fixtures.login_endpoint_fixtures import login_test_helper, TEST_ACCESS_TOKEN, TEST_REFRESH_TOKEN
 
 
 @pytest.mark.asyncio

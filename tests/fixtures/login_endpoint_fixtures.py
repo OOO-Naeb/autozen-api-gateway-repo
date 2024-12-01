@@ -6,6 +6,8 @@ from httpx import ASGITransport, AsyncClient
 from src.application.use_cases.auth_use_case import AuthUseCase
 from src.main import app
 
+TEST_ACCESS_TOKEN = "test_access_token"
+TEST_REFRESH_TOKEN = "test_refresh_token"
 
 @pytest.fixture
 def mock_auth_use_case(monkeypatch):
