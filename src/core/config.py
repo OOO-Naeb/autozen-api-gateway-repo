@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from pydantic.v1 import BaseSettings
 
-load_dotenv(dotenv_path='C:/Users/User/PycharmProjects/autozen-api-gateway/src/.env')
+load_dotenv(dotenv_path='src/.env')
 
 
 class Settings(BaseSettings):
@@ -17,8 +17,6 @@ class Settings(BaseSettings):
     RABBITMQ_PASSWORD: str = os.getenv('RABBITMQ_PASSWORD')
     RABBITMQ_HOST: str = os.getenv('RABBITMQ_HOST')
     RABBITMQ_PORT: int = int(os.getenv('RABBITMQ_PORT'))
-
-    print(JWT_PUBLIC_SECRET_KEY)
 
     @property
     def parsed_scopes(self) -> dict:
