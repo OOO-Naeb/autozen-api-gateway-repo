@@ -1,4 +1,3 @@
-from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends, Body
@@ -39,7 +38,7 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
         refresh_token = tokens.refresh_token
 
         return JSONResponse(
-            status_code=HTTPStatus.OK,
+            status_code=status.HTTP_200_OK,
             content={
                 'success': True,
                 'message': 'Logged in successfully.',
@@ -83,7 +82,7 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
         refresh_token = tokens.refresh_token
 
         return JSONResponse(
-            status_code=HTTPStatus.OK,
+            status_code=status.HTTP_200_OK,
             content={
                 'success': True,
                 'message': 'Tokens have been refreshed successfully.',
@@ -132,7 +131,11 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
 
         return JSONResponse(
             status_code=int(status_code),
-            content={"success": True, "user": user_data.dict(), "message": "User registered successfully."}
+            content={
+                "success": True,
+                "user": user_data.dict(),
+                "message": "User registered successfully.",
+            }
         )
 
     except SourceUnavailableException:
