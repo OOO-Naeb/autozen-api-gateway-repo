@@ -121,20 +121,18 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
     Raises:
         HTTPException (503): When RabbitMQ service is not available.
         HTTPException (504): When waiting time from the 'AuthService' microservice exceeds the timeout (5s).
-        HTTPException (404): If user or source was not found.
         HTTPException (409): When given email or phone number is already in the DB.
         HTTPException (500): If unknown exception occurs.
     """
     try:
-        result = await auth_use_case.register(data)
-        status_code, user_data = result
+        user_data = await auth_use_case.register(data)
 
         return JSONResponse(
-            status_code=int(status_code),
+            status_code=status.HTTP_201_CREATED,
             content={
                 "success": True,
-                "user": user_data.dict(),
                 "message": "User registered successfully.",
+                "user": user_data.model_dump(),
             }
         )
 
@@ -144,15 +142,11 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
     except SourceTimeoutException:
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                             detail="The registration service took too long to respond. Please try again later.")
-    except NotFoundException:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Source not found.")
     except ConflictException:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="This email or phone number is already taken.")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"An unexpected error occurred during registration: {str(e)}")
+    except UnhandledException or Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
 
 
 @auth_router.post('/test_token')

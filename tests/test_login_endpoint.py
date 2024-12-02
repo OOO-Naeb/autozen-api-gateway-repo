@@ -1,139 +1,116 @@
 import pytest
+from httpx import AsyncClient, ASGITransport
 from starlette import status
 
 from src.domain.exceptions import UnauthorizedException, SourceUnavailableException, SourceTimeoutException, \
     UnhandledException
-from tests.fixtures.login_endpoint_fixtures import TEST_ACCESS_TOKEN, TEST_REFRESH_TOKEN, mock_auth_use_case_for_login
-from tests.function_test_helper import function_test_helper
+from src.main import app
 
 LOGIN_REQUEST_URL = 'http://localhost:8000/api/v1/auth/login'
 
+
 @pytest.mark.asyncio
-async def test_login_success(mock_auth_use_case_for_login):
-    expected_response = {
+async def test_login_success_with_email(override_dependencies):
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"email": "example@gmail.com", "password": "test_password"}
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
         "success": True,
         "message": "Logged in successfully.",
-        "access_token": TEST_ACCESS_TOKEN,
-        "refresh_token": TEST_REFRESH_TOKEN,
+        "access_token": "TEST_ACCESS_TOKEN",
+        "refresh_token": "TEST_REFRESH_TOKEN",
         "token_type": "Bearer",
     }
 
-    # (Login controller accepts one of two optional arguments: email or phone number)
-    # Test in case if email was provided
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'email': 'example@gmail.com',
-            'password': 'test_password',
-        },
-        expected_status_code=status.HTTP_200_OK,
-        expected_response=expected_response
-    )
 
-    # Test in case if phone number was provided
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'phone_number': '+1(995)438-24-47',
-            'password': 'test_password',
-        },
-        expected_status_code=status.HTTP_200_OK,
-        expected_response=expected_response
-    )
+@pytest.mark.asyncio
+async def test_login_success_with_phone(override_dependencies):
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"phone_number": "+1(995)438-24-47", "password": "test_password"}
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
+        "success": True,
+        "message": "Logged in successfully.",
+        "access_token": "TEST_ACCESS_TOKEN",
+        "refresh_token": "TEST_REFRESH_TOKEN",
+        "token_type": "Bearer",
+    }
 
 
 @pytest.mark.asyncio
-async def test_login_unauthorized(mock_auth_use_case_for_login):
-    expected_response = {"detail": UnauthorizedException.get_default_detail()}
+async def test_login_unauthorized_email(override_dependencies, mock_auth_use_case):
+    mock_auth_use_case.login.side_effect = UnauthorizedException()
 
-    # (Login controller accepts one of two optional arguments: email or phone number)
-    # Test in case if email was provided
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'email': 'wrong_email@gmail.com',
-            'password': 'wrong_password',
-        },
-        side_effect=UnauthorizedException(),
-        expected_status_code=status.HTTP_401_UNAUTHORIZED,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"email": "wrong_email@gmail.com", "password": "wrong_password"}
+        )
 
-    # Test in case if phone number was provided
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'phone_number': '+1(995)438-24-47',
-            'password': 'wrong_password',
-        },
-        expected_status_code=status.HTTP_401_UNAUTHORIZED
-    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": UnauthorizedException.get_default_detail()}
 
 
 @pytest.mark.asyncio
-async def test_login_rabbitMQ_unavailable(mock_auth_use_case_for_login):
-    expected_response = {"detail": "Currently, login service is not available. Try again later."}
+async def test_login_unauthorized_phone(override_dependencies, mock_auth_use_case):
+    mock_auth_use_case.login.side_effect = UnauthorizedException()
 
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'email': 'example@gmail.com',
-            'password': 'test_password',
-        },
-        side_effect=SourceUnavailableException(),
-        expected_status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"phone_number": "+1(995)438-24-47", "password": "wrong_password"}
+        )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": UnauthorizedException.get_default_detail()}
 
 
 @pytest.mark.asyncio
-async def test_login_auth_service_unavailable(mock_auth_use_case_for_login):
-    expected_response = {"detail": "Login service took too long to respond."}
+async def test_login_rabbitmq_unavailable(override_dependencies, mock_auth_use_case):
+    mock_auth_use_case.login.side_effect = SourceUnavailableException()
 
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'email': 'example@gmail.com',
-            'password': 'test_password',
-        },
-        side_effect=SourceTimeoutException(),
-        expected_status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"email": "example@gmail.com", "password": "test_password"}
+        )
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert response.json() == {"detail": "Currently, login service is not available. Try again later."}
 
 
 @pytest.mark.asyncio
-async def test_login_unhandled_error(mock_auth_use_case_for_login):
-    expected_response = {"detail": "An unexpected error occurred."}
+async def test_login_auth_service_timeout(override_dependencies, mock_auth_use_case):
+    mock_auth_use_case.login.side_effect = SourceTimeoutException()
 
-    await function_test_helper(
-        "post",
-        LOGIN_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_login,
-        dependency_method_name="login",
-        request_data={
-            'email': 'example@gmail.com',
-            'password': 'test_password',
-        },
-        side_effect=UnhandledException() or Exception(),
-        expected_status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"email": "example@gmail.com", "password": "test_password"}
+        )
+
+    assert response.status_code == status.HTTP_504_GATEWAY_TIMEOUT
+    assert response.json() == {"detail": "Login service took too long to respond."}
+
+
+@pytest.mark.asyncio
+async def test_login_unhandled_error(override_dependencies, mock_auth_use_case):
+    mock_auth_use_case.login.side_effect = UnhandledException()
+
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            LOGIN_REQUEST_URL,
+            json={"email": "example@gmail.com", "password": "test_password"}
+        )
+
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert response.json() == {"detail": "An unexpected error occurred."}
+

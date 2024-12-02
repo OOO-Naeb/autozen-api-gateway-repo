@@ -1,29 +1,22 @@
-from unittest.mock import AsyncMock
-
-import pytest
-
 from src.application.use_cases.auth_use_case import AuthUseCase
 from src.domain.schemas import Tokens
 from src.main import app
+import pytest
+from unittest.mock import AsyncMock
 
-TEST_ACCESS_TOKEN = "test_access_token"
-TEST_REFRESH_TOKEN_RECEIVED = "test_refresh_token_received"
-TEST_REFRESH_TOKEN_TO_SEND = "test_refresh_token_sent"
 
 @pytest.fixture
-def mock_auth_use_case_for_refresh(monkeypatch):
-    mock_auth_use_case = AsyncMock()
-
-    mock_auth_use_case.refresh.return_value = Tokens(
-        access_token=TEST_ACCESS_TOKEN,
-        refresh_token=TEST_REFRESH_TOKEN_RECEIVED
+def mock_auth_use_case_refresh():
+    mock = AsyncMock()
+    mock.refresh.return_value = Tokens(
+        access_token='NEW_TEST_ACCESS_TOKEN',
+        refresh_token="NEW_TEST_REFRESH_TOKEN"
     )
+    return mock
 
-    async def mock_auth_use_case_dependency():
-        return mock_auth_use_case
 
-    app.dependency_overrides[AuthUseCase] = mock_auth_use_case_dependency
-
-    yield mock_auth_use_case
-
+@pytest.fixture
+def override_dependencies_refresh(mock_auth_use_case_refresh):
+    app.dependency_overrides = {AuthUseCase: lambda: mock_auth_use_case_refresh}
+    yield
     app.dependency_overrides = {}

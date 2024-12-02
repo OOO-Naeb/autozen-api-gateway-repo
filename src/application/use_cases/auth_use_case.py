@@ -6,7 +6,7 @@ from fastapi import Depends
 from starlette.responses import JSONResponse
 
 from src.core.jwt_validator import JWTValidator
-from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm
+from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, UserFromDB
 from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapter
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
@@ -43,7 +43,7 @@ class AuthUseCase:
 
         return await self.auth_adapter.refresh(refresh_token_payload)
 
-    async def register(self, data: RegisterRequestForm):
+    async def register(self, data: RegisterRequestForm) -> UserFromDB:
         """
         USE CASE METHOD: Register new user with provided data. Passes the query through to the 'AuthAdapter'.
 
@@ -59,4 +59,4 @@ class AuthUseCase:
         access_token_payload = await self.jwt_validator.validate_jwt_token(access_token, required_token_type='access')
         print("Token was validated in AuthUseCase.")
 
-        return JSONResponse(status_code=HTTPStatus.OK, content=access_token_payload)
+        return HTTPStatus.OK, access_token_payload

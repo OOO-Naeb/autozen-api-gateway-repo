@@ -1,109 +1,98 @@
 import pytest
+from httpx import AsyncClient, ASGITransport
 from starlette import status
 
 from src.domain.exceptions import UnauthorizedException, SourceUnavailableException, SourceTimeoutException, \
     UnhandledException
-from tests.fixtures.refresh_endpoint_fixtures import mock_auth_use_case_for_refresh, TEST_ACCESS_TOKEN, TEST_REFRESH_TOKEN_TO_SEND, \
-    TEST_REFRESH_TOKEN_RECEIVED
-from tests.function_test_helper import function_test_helper
+from src.main import app
 
 REFRESH_REQUEST_URL = 'http://localhost:8000/api/v1/auth/refresh'
 
+
 @pytest.mark.asyncio
-async def test_refresh_success(mock_auth_use_case_for_refresh):
-    expected_response = {
+async def test_refresh_success(override_dependencies_refresh):
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            REFRESH_REQUEST_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer VALID_REFRESH_TOKEN'
+            },
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
         "success": True,
-        "message": "Tokens have been refreshed successfully.",
-        "access_token": TEST_ACCESS_TOKEN,
-        "refresh_token": TEST_REFRESH_TOKEN_RECEIVED,
-        "token_type": "Bearer",
+        'message': 'Tokens have been refreshed successfully.',
+        "access_token": "NEW_TEST_ACCESS_TOKEN",
+        "refresh_token": "NEW_TEST_REFRESH_TOKEN",
+        "token_type": "Bearer"
     }
 
-    await function_test_helper(
-        'post',
-        REFRESH_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_refresh,
-        dependency_method_name='refresh',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {TEST_REFRESH_TOKEN_TO_SEND}',
-        },
-        expected_status_code=status.HTTP_200_OK,
-        expected_response=expected_response
-    )
+
+@pytest.mark.asyncio
+async def test_refresh_unauthorized(override_dependencies_refresh, mock_auth_use_case_refresh):
+    mock_auth_use_case_refresh.refresh.side_effect = UnauthorizedException()
+
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            REFRESH_REQUEST_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer VALID_REFRESH_TOKEN'
+            },
+        )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": UnauthorizedException.get_default_detail()}
 
 
 @pytest.mark.asyncio
-async def test_refresh_unauthorized(mock_auth_use_case_for_refresh):
-    expected_response = {"detail": UnauthorizedException.get_default_detail()}
+async def test_refresh_service_unavailable(override_dependencies_refresh, mock_auth_use_case_refresh):
+    mock_auth_use_case_refresh.refresh.side_effect = SourceUnavailableException()
 
-    await function_test_helper(
-        'post',
-        REFRESH_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_refresh,
-        dependency_method_name='refresh',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {TEST_REFRESH_TOKEN_TO_SEND}',
-        },
-        side_effect=UnauthorizedException(),
-        expected_status_code=status.HTTP_401_UNAUTHORIZED,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            REFRESH_REQUEST_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer VALID_REFRESH_TOKEN'
+            },
+        )
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert response.json() == {"detail": "Currently, tokens refresh service is not available. Try again later."}
 
 
 @pytest.mark.asyncio
-async def test_refresh_rabbitMQ_unavailable(mock_auth_use_case_for_refresh):
-    expected_response = {"detail": "Currently, tokens refresh service is not available. Try again later."}
+async def test_refresh_timeout(override_dependencies_refresh, mock_auth_use_case_refresh):
+    mock_auth_use_case_refresh.refresh.side_effect = SourceTimeoutException()
 
-    await function_test_helper(
-        'post',
-        REFRESH_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_refresh,
-        dependency_method_name='refresh',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {TEST_REFRESH_TOKEN_TO_SEND}',
-        },
-        side_effect=SourceUnavailableException(),
-        expected_status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            REFRESH_REQUEST_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer VALID_REFRESH_TOKEN'
+            },
+        )
+
+    assert response.status_code == status.HTTP_504_GATEWAY_TIMEOUT
+    assert response.json() == {"detail": "Token refresh service took too long to respond."}
 
 
 @pytest.mark.asyncio
-async def test_refresh_auth_service_unavailable(mock_auth_use_case_for_refresh):
-    expected_response = {"detail": "Token refresh service took too long to respond."}
+async def test_refresh_unhandled_error(override_dependencies_refresh, mock_auth_use_case_refresh):
+    mock_auth_use_case_refresh.refresh.side_effect = UnhandledException()
 
-    await function_test_helper(
-        'post',
-        REFRESH_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_refresh,
-        dependency_method_name='refresh',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {TEST_REFRESH_TOKEN_TO_SEND}',
-        },
-        side_effect=SourceTimeoutException(),
-        expected_status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        expected_response=expected_response
-    )
+    async with AsyncClient(transport=ASGITransport(app=app)) as client:
+        response = await client.post(
+            REFRESH_REQUEST_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer VALID_REFRESH_TOKEN'
+            },
+        )
 
-
-@pytest.mark.asyncio
-async def test_refresh_unhandled_error(mock_auth_use_case_for_refresh):
-    expected_response = {"detail": "An unexpected error occurred."}
-
-    await function_test_helper(
-        'post',
-        REFRESH_REQUEST_URL,
-        dependency_to_mock=mock_auth_use_case_for_refresh,
-        dependency_method_name='refresh',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {TEST_REFRESH_TOKEN_TO_SEND}',
-        },
-        side_effect=UnhandledException(),
-        expected_status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        expected_response=expected_response
-    )
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert response.json() == {"detail": "An unexpected error occurred."}
