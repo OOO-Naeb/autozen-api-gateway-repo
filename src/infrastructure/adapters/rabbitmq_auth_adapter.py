@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import uuid
 
 import aio_pika
@@ -16,6 +17,26 @@ from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 class RabbitMQAuthAdapter(IAuthAdapter):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        log_format = '%(levelname)s:    %(asctime)s - %(name)s: %(message)s'
+        date_format = '%Y-%m-%d %H:%M:%S'
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(logging.Formatter(log_format, datefmt=date_format))
+
+        file_handler = logging.FileHandler(os.path.join(log_dir, "auth_log.log"))
+        file_handler.setLevel(logging.ERROR)
+        file_handler.setFormatter(logging.Formatter(log_format, datefmt=date_format))
+
+        self.logger.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
+
+        self.logger.setLevel(logging.DEBUG)
         self.connection = None
         self.channel = None
         self.exchange = None
@@ -41,7 +62,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
                 )
             except aio_pika.exceptions.AMQPConnectionError:
                 self.logger.error(
-                    f"RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect()."
+                    "RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect()."
                 )
                 raise SourceUnavailableException(detail="RabbitMQ service is unavailable.")
 
@@ -66,7 +87,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         correlation_id = str(uuid.uuid4())
 
         # Dev logs
-        print("Correlation ID from sender ->", correlation_id)
+        print("Generated correlation ID from sender ->", correlation_id)
 
         rabbitmq_response_future = asyncio.get_event_loop().create_future()
 
@@ -126,7 +147,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         elif status_code == 404:
             raise NotFoundException(detail="Source was not found.")
         elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter during LOGIN: {status_code} | {response_body}")
+            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in login(): {status_code} | {response_body}")
             raise UnhandledException()
 
         return Tokens(**response_body)
@@ -147,7 +168,6 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             SourceTimeoutException (504): When waiting time from 'AuthService' exceeds the timeout.
             UnhandledException (500): If unknown exception occurs.
         """
-        print("PAYLOAD TO SEND:", refresh_token_payload)
         status_code, response_body = await self.rpc_call(routing_key='AUTH.refresh', body=refresh_token_payload)
 
         if status_code == 401:
@@ -155,7 +175,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         elif status_code == 404:
             raise NotFoundException(detail="Source was not found.")
         elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter during REFRESHING TOKEN: {status_code} | {response_body}")
+            self.logger.error(f"Unknown error in RabbitMQAuthAdapter during in refresh(): {status_code} | {response_body}")
             raise UnhandledException()
 
         return Tokens(**response_body)
@@ -183,7 +203,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         elif status_code == 409:
             raise ConflictException(detail="User's email is already registered in the DB.")
         elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter during REGISTERING: {status_code} | {response_body}")
+            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in register(): {status_code} | {response_body}")
             raise UnhandledException()
 
         return UserFromDB(**response_body)
