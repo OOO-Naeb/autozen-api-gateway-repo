@@ -35,8 +35,8 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
-
         self.logger.setLevel(logging.DEBUG)
+
         self.connection = None
         self.channel = None
         self.exchange = None
@@ -83,7 +83,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         """
         await self.connect()
 
-        callback_queue = await self.channel.declare_queue(name=f'FOR-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True)
+        callback_queue = await self.channel.declare_queue(name=f'FOR-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True, auto_delete=True)
         correlation_id = str(uuid.uuid4())
 
         # Dev logs
@@ -94,8 +94,9 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         async def on_response(response_message: aio_pika.IncomingMessage):
             if response_message.correlation_id == correlation_id:
                 rabbitmq_response_future.set_result(response_message)
+                await response_message.ack()
 
-        await callback_queue.consume(on_response)
+        consumer_tag = await callback_queue.consume(on_response)
 
         await self.exchange.publish(
             aio_pika.Message(
@@ -122,6 +123,11 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             )
 
             raise SourceTimeoutException(detail="Timeout waiting for response from 'AuthService' microservice.")
+
+        finally:
+            await callback_queue.cancel(consumer_tag)
+            if not self.channel.is_closed:
+                await self.channel.close()
 
     async def login(self, data: LoginRequestForm) -> Tokens:
         """
@@ -175,7 +181,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         elif status_code == 404:
             raise NotFoundException(detail="Source was not found.")
         elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter during in refresh(): {status_code} | {response_body}")
+            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in refresh(): {status_code} | {response_body}")
             raise UnhandledException()
 
         return Tokens(**response_body)
