@@ -1,4 +1,4 @@
-from src.application.use_cases.auth_use_case import AuthUseCase
+from src.application.services.auth_service import AuthService
 from src.domain.schemas import Tokens
 from src.main import app
 
@@ -22,7 +22,7 @@ def mock_auth_use_case():
 
 @pytest.fixture
 def override_dependencies(mock_auth_use_case):
-    app.dependency_overrides = {AuthUseCase: lambda: mock_auth_use_case}
+    app.dependency_overrides = {AuthService: lambda: mock_auth_use_case}
     yield
     app.dependency_overrides = {}
 

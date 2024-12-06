@@ -3,7 +3,6 @@ from http.client import HTTPResponse
 from typing import Annotated
 
 from fastapi import Depends
-from starlette.responses import JSONResponse
 
 from src.core.jwt_validator import JWTValidator
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, UserFromDB
@@ -11,7 +10,7 @@ from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapte
 from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
 
 
-class AuthUseCase:
+class AuthService:
     def __init__(self, auth_adapter: Annotated[IAuthAdapter, Depends(RabbitMQAuthAdapter)], jwt_validator: Annotated[JWTValidator, Depends()]) -> None:
         self.auth_adapter = auth_adapter
         self.jwt_validator = jwt_validator

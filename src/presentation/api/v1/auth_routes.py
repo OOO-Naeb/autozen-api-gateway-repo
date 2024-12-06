@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from starlette import status
 from starlette.responses import JSONResponse
 
-from src.application.use_cases.auth_use_case import AuthUseCase
-from src.domain.exceptions import SourceTimeoutException, NotFoundException, \
+from src.application.services.auth_service import AuthService
+from src.domain.exceptions import SourceTimeoutException, \
     UnauthorizedException, SourceUnavailableException, ConflictException, UnhandledException
 from src.domain.oauth_schemas import oauth2_token_schema
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, AccessToken
@@ -16,13 +16,13 @@ auth_router = APIRouter(
 )
 
 @auth_router.post('/login', response_model=Tokens)
-async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
+async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Log in a user with provided credentials. Passes the query to the 'AuthUseCase'.
 
     Args:
         form_data (LoginRequestForm): The login credentials provided by the client.
-        auth_use_case (AuthUseCase): The authentication use-case.
+        auth_use_case (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
@@ -60,13 +60,13 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
 
 
 @auth_router.post("/refresh", response_model=Tokens)
-async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
+async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Return a new pair of access and refresh tokens. Passes the query to the 'AuthUseCase'.
 
     Args:
         refresh_token (RefreshToken): The refresh token to get both new access and refresh tokens.
-        auth_use_case (AuthUseCase): The authentication use-case.
+        auth_use_case (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
@@ -107,13 +107,13 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
 
 
 @auth_router.post('/register')
-async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthUseCase, Depends()]) -> JSONResponse:
+async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Register new user with provided data. Passes the query to the 'AuthUseCase'.
 
     Args:
         data (RegisterRequestForm): The data to register.
-        auth_use_case (AuthUseCase): The authentication use-case.
+        auth_use_case (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing success, error message and status code.
@@ -150,7 +150,7 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
 
 
 @auth_router.post('/test_token')
-async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthUseCase, Depends()]):
+async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthService, Depends()]):
     try:
         tokens = await auth_use_case.test_token(str(access_token))
 

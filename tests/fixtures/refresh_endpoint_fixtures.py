@@ -1,4 +1,4 @@
-from src.application.use_cases.auth_use_case import AuthUseCase
+from src.application.services.auth_service import AuthService
 from src.domain.schemas import Tokens
 from src.main import app
 import pytest
@@ -17,6 +17,6 @@ def mock_auth_use_case_refresh():
 
 @pytest.fixture
 def override_dependencies_refresh(mock_auth_use_case_refresh):
-    app.dependency_overrides = {AuthUseCase: lambda: mock_auth_use_case_refresh}
+    app.dependency_overrides = {AuthService: lambda: mock_auth_use_case_refresh}
     yield
     app.dependency_overrides = {}
