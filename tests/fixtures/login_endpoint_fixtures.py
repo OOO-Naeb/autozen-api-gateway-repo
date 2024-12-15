@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 
 
 @pytest.fixture
-def mock_auth_use_case():
+def mock_auth_service():
     mock = AsyncMock()
     mock.login.return_value = Tokens(
         access_token="TEST_ACCESS_TOKEN",
@@ -21,8 +21,8 @@ def mock_auth_use_case():
 
 
 @pytest.fixture
-def override_dependencies(mock_auth_use_case):
-    app.dependency_overrides = {AuthService: lambda: mock_auth_use_case}
+def override_dependencies(mock_auth_service):
+    app.dependency_overrides = {AuthService: lambda: mock_auth_service}
     yield
     app.dependency_overrides = {}
 

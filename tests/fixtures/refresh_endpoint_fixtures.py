@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 
 @pytest.fixture
-def mock_auth_use_case_refresh():
+def mock_auth_service_refresh():
     mock = AsyncMock()
     mock.refresh.return_value = Tokens(
         access_token='NEW_TEST_ACCESS_TOKEN',
@@ -16,7 +16,7 @@ def mock_auth_use_case_refresh():
 
 
 @pytest.fixture
-def override_dependencies_refresh(mock_auth_use_case_refresh):
-    app.dependency_overrides = {AuthService: lambda: mock_auth_use_case_refresh}
+def override_dependencies_refresh(mock_auth_service_refresh):
+    app.dependency_overrides = {AuthService: lambda: mock_auth_service_refresh}
     yield
     app.dependency_overrides = {}

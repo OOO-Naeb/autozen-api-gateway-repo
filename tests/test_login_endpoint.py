@@ -46,8 +46,8 @@ async def test_login_success_with_phone(override_dependencies):
 
 
 @pytest.mark.asyncio
-async def test_login_unauthorized_email(override_dependencies, mock_auth_use_case):
-    mock_auth_use_case.login.side_effect = UnauthorizedException()
+async def test_login_unauthorized_email(override_dependencies, mock_auth_service):
+    mock_auth_service.login.side_effect = UnauthorizedException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -60,8 +60,8 @@ async def test_login_unauthorized_email(override_dependencies, mock_auth_use_cas
 
 
 @pytest.mark.asyncio
-async def test_login_unauthorized_phone(override_dependencies, mock_auth_use_case):
-    mock_auth_use_case.login.side_effect = UnauthorizedException()
+async def test_login_unauthorized_phone(override_dependencies, mock_auth_service):
+    mock_auth_service.login.side_effect = UnauthorizedException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -74,8 +74,8 @@ async def test_login_unauthorized_phone(override_dependencies, mock_auth_use_cas
 
 
 @pytest.mark.asyncio
-async def test_login_rabbitmq_unavailable(override_dependencies, mock_auth_use_case):
-    mock_auth_use_case.login.side_effect = SourceUnavailableException()
+async def test_login_rabbitmq_unavailable(override_dependencies, mock_auth_service):
+    mock_auth_service.login.side_effect = SourceUnavailableException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -88,8 +88,8 @@ async def test_login_rabbitmq_unavailable(override_dependencies, mock_auth_use_c
 
 
 @pytest.mark.asyncio
-async def test_login_auth_service_timeout(override_dependencies, mock_auth_use_case):
-    mock_auth_use_case.login.side_effect = SourceTimeoutException()
+async def test_login_auth_service_timeout(override_dependencies, mock_auth_service):
+    mock_auth_service.login.side_effect = SourceTimeoutException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -102,8 +102,8 @@ async def test_login_auth_service_timeout(override_dependencies, mock_auth_use_c
 
 
 @pytest.mark.asyncio
-async def test_login_unhandled_error(override_dependencies, mock_auth_use_case):
-    mock_auth_use_case.login.side_effect = UnhandledException()
+async def test_login_unhandled_error(override_dependencies, mock_auth_service):
+    mock_auth_service.login.side_effect = UnhandledException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(

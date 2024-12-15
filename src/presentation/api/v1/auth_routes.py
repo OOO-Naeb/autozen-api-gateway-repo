@@ -16,13 +16,13 @@ auth_router = APIRouter(
 )
 
 @auth_router.post('/login', response_model=Tokens)
-async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
+async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_service: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Log in a user with provided credentials. Passes the query to the 'AuthUseCase'.
 
     Args:
         form_data (LoginRequestForm): The login credentials provided by the client.
-        auth_use_case (AuthService): The authentication use-case.
+        auth_service (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
@@ -33,7 +33,7 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
         HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
-        tokens = await auth_use_case.login(form_data)
+        tokens = await auth_service.login(form_data)
         access_token = tokens.access_token
         refresh_token = tokens.refresh_token
 
@@ -60,13 +60,13 @@ async def login(form_data: Annotated[LoginRequestForm, Body(...)], auth_use_case
 
 
 @auth_router.post("/refresh", response_model=Tokens)
-async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
+async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_schema)], auth_service: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Return a new pair of access and refresh tokens. Passes the query to the 'AuthUseCase'.
 
     Args:
         refresh_token (RefreshToken): The refresh token to get both new access and refresh tokens.
-        auth_use_case (AuthService): The authentication use-case.
+        auth_service (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
@@ -77,7 +77,7 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
         HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     try:
-        tokens = await auth_use_case.refresh(str(refresh_token))
+        tokens = await auth_service.refresh(str(refresh_token))
         access_token = tokens.access_token
         refresh_token = tokens.refresh_token
 
@@ -107,13 +107,13 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
 
 
 @auth_router.post('/register')
-async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_case: Annotated[AuthService, Depends()]) -> JSONResponse:
+async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_service: Annotated[AuthService, Depends()]) -> JSONResponse:
     """
     CONTROLLER: Register new user with provided data. Passes the query to the 'AuthUseCase'.
 
     Args:
         data (RegisterRequestForm): The data to register.
-        auth_use_case (AuthService): The authentication use-case.
+        auth_service (AuthService): The authentication use-case.
 
     Returns:
         JSONResponse: A JSON object containing success, error message and status code.
@@ -125,7 +125,7 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
         HTTPException (500): If unknown exception occurs.
     """
     try:
-        user_data = await auth_use_case.register(data)
+        user_data = await auth_service.register(data)
 
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -150,9 +150,9 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_use_cas
 
 
 @auth_router.post('/test_token')
-async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_use_case: Annotated[AuthService, Depends()]):
+async def test_token(access_token: Annotated[AccessToken, Depends(oauth2_token_schema)], auth_service: Annotated[AuthService, Depends()]):
     try:
-        tokens = await auth_use_case.test_token(str(access_token))
+        tokens = await auth_service.test_token(str(access_token))
 
         return tokens
 

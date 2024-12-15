@@ -31,8 +31,8 @@ async def test_refresh_success(override_dependencies_refresh):
 
 
 @pytest.mark.asyncio
-async def test_refresh_unauthorized(override_dependencies_refresh, mock_auth_use_case_refresh):
-    mock_auth_use_case_refresh.refresh.side_effect = UnauthorizedException()
+async def test_refresh_unauthorized(override_dependencies_refresh, mock_auth_service_refresh):
+    mock_auth_service_refresh.refresh.side_effect = UnauthorizedException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -48,8 +48,8 @@ async def test_refresh_unauthorized(override_dependencies_refresh, mock_auth_use
 
 
 @pytest.mark.asyncio
-async def test_refresh_service_unavailable(override_dependencies_refresh, mock_auth_use_case_refresh):
-    mock_auth_use_case_refresh.refresh.side_effect = SourceUnavailableException()
+async def test_refresh_service_unavailable(override_dependencies_refresh, mock_auth_service_refresh):
+    mock_auth_service_refresh.refresh.side_effect = SourceUnavailableException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -65,8 +65,8 @@ async def test_refresh_service_unavailable(override_dependencies_refresh, mock_a
 
 
 @pytest.mark.asyncio
-async def test_refresh_timeout(override_dependencies_refresh, mock_auth_use_case_refresh):
-    mock_auth_use_case_refresh.refresh.side_effect = SourceTimeoutException()
+async def test_refresh_timeout(override_dependencies_refresh, mock_auth_service_refresh):
+    mock_auth_service_refresh.refresh.side_effect = SourceTimeoutException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(
@@ -82,8 +82,8 @@ async def test_refresh_timeout(override_dependencies_refresh, mock_auth_use_case
 
 
 @pytest.mark.asyncio
-async def test_refresh_unhandled_error(override_dependencies_refresh, mock_auth_use_case_refresh):
-    mock_auth_use_case_refresh.refresh.side_effect = UnhandledException()
+async def test_refresh_unhandled_error(override_dependencies_refresh, mock_auth_service_refresh):
+    mock_auth_service_refresh.refresh.side_effect = UnhandledException()
 
     async with AsyncClient(transport=ASGITransport(app=app)) as client:
         response = await client.post(

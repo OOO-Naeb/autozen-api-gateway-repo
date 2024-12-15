@@ -10,7 +10,7 @@ REGISTER_REQUEST_URL = 'http://localhost:8000/api/v1/auth/register'
 
 
 @pytest.mark.asyncio
-async def test_register_success(override_dependencies_register, mock_auth_use_case_register):
+async def test_register_success(override_dependencies_register, mock_auth_service_register):
     expected_response = {
         "success": True,
         "message": "User registered successfully.",
@@ -43,8 +43,8 @@ async def test_register_success(override_dependencies_register, mock_auth_use_ca
 
 
 @pytest.mark.asyncio
-async def test_register_rabbitmq_unavailable(override_dependencies_register, mock_auth_use_case_register):
-    mock_auth_use_case_register.register.side_effect = SourceUnavailableException()
+async def test_register_rabbitmq_unavailable(override_dependencies_register, mock_auth_service_register):
+    mock_auth_service_register.register.side_effect = SourceUnavailableException()
     expected_response = {'detail': 'Currently, the registration service is not available. Please try again later.'}
 
     request_data = {
@@ -65,8 +65,8 @@ async def test_register_rabbitmq_unavailable(override_dependencies_register, moc
 
 
 @pytest.mark.asyncio
-async def test_register_auth_service_timout(override_dependencies_register, mock_auth_use_case_register):
-    mock_auth_use_case_register.register.side_effect = SourceTimeoutException()
+async def test_register_auth_service_timout(override_dependencies_register, mock_auth_service_register):
+    mock_auth_service_register.register.side_effect = SourceTimeoutException()
     expected_response = {'detail': 'The registration service took too long to respond. Please try again later.'}
 
     request_data = {
@@ -87,8 +87,8 @@ async def test_register_auth_service_timout(override_dependencies_register, mock
 
 
 @pytest.mark.asyncio
-async def test_register_email_or_phone_conflict(override_dependencies_register, mock_auth_use_case_register):
-    mock_auth_use_case_register.register.side_effect = ConflictException()
+async def test_register_email_or_phone_conflict(override_dependencies_register, mock_auth_service_register):
+    mock_auth_service_register.register.side_effect = ConflictException()
     expected_response = {'detail': 'This email or phone number is already taken.'}
 
     request_data = {
@@ -109,8 +109,8 @@ async def test_register_email_or_phone_conflict(override_dependencies_register, 
 
 
 @pytest.mark.asyncio
-async def test_register_unhandled_error(override_dependencies_register, mock_auth_use_case_register):
-    mock_auth_use_case_register.register.side_effect = UnhandledException()
+async def test_register_unhandled_error(override_dependencies_register, mock_auth_service_register):
+    mock_auth_service_register.register.side_effect = UnhandledException()
     expected_response = {'detail': 'An unexpected error occurred.'}
 
     request_data = {
