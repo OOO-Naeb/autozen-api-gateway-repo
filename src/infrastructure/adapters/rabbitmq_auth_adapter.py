@@ -11,7 +11,7 @@ from src.core.config import settings
 from src.domain.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
     ConflictException, UnauthorizedException, UnhandledException
 from src.domain.schemas import Tokens, RegisterRequestForm, LoginRequestForm, UserFromDB
-from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
+from src.infrastructure.interfaces.auth_adapter_interface import IAuthAdapter
 
 
 class RabbitMQAuthAdapter(IAuthAdapter):
@@ -44,7 +44,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
     async def connect(self):
         """
-        Establishes a connection to the RabbitMQ service.
+        ADAPTER METHOD: Establish a connection to the RabbitMQ service.
 
         Raises:
             SourceUnavailableException: When RabbitMQ service is not available.
@@ -68,7 +68,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
 
     async def rpc_call(self, routing_key: str, body: dict, timeout: int = 5) -> tuple:
         """
-        Sends an RPC call through RabbitMQ and waits for the response.
+        ADAPTER METHOD: Send an RPC call through RabbitMQ and wait for the response.
 
         Args:
             routing_key (str): The routing key for the RabbitMQ queue.
@@ -118,11 +118,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             return status_code, response_body
 
         except asyncio.TimeoutError:
-            self.logger.error(
-                f"Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call()."
-            )
-
-            raise SourceTimeoutException(detail="Timeout waiting for response from 'AuthService' microservice.")
+            raise SourceTimeoutException()
 
         finally:
             await callback_queue.cancel(consumer_tag)

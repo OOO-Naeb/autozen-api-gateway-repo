@@ -1,11 +1,17 @@
 import uvicorn
 from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.core.middleware.exception_middleware import ExceptionMiddleware
 from src.presentation.api.v1.auth_routes import auth_router
 
 app = FastAPI()
 
+# Routers
 app.include_router(auth_router)
+
+# Middleware
+app.add_middleware(BaseHTTPMiddleware, dispatch=ExceptionMiddleware(app=app).dispatch)
 
 
 @app.get("/")

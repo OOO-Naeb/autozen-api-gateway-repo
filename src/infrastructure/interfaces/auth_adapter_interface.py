@@ -1,10 +1,6 @@
 from abc import abstractmethod, ABC
-from typing import Annotated
 
-from fastapi import Depends
-
-from src.domain.oauth_schemas import oauth2_token_schema
-from src.domain.schemas import LoginRequestForm, RefreshToken, Tokens, RegisterRequestForm
+from src.domain.schemas import LoginRequestForm, Tokens, RegisterRequestForm
 
 
 class IAuthAdapter(ABC):

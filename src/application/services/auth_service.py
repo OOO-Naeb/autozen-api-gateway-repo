@@ -7,7 +7,7 @@ from fastapi import Depends
 from src.core.jwt_validator import JWTValidator
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, UserFromDB
 from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapter
-from src.infrastructure.interfaces.adapter_interface import IAuthAdapter
+from src.infrastructure.interfaces.auth_adapter_interface import IAuthAdapter
 
 
 class AuthService:

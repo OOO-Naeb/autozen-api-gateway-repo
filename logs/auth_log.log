@@ -7,3 +7,29 @@ ERROR:    2024-12-05 12:18:30 - src.infrastructure.adapters.rabbitmq_auth_adapte
 ERROR:    2024-12-05 12:18:53 - src.infrastructure.adapters.rabbitmq_auth_adapter: Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call().
 ERROR:    2024-12-05 12:18:53 - src.infrastructure.adapters.rabbitmq_auth_adapter: Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call().
 ERROR:    2024-12-05 12:18:53 - src.infrastructure.adapters.rabbitmq_auth_adapter: Timeout while waiting for response from 'AuthService' microservice. From: RabbitMQAuthAdapter, rpc_call().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
+ERROR:    2024-12-27 13:39:26 - src.infrastructure.adapters.rabbitmq_auth_adapter: RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect().
