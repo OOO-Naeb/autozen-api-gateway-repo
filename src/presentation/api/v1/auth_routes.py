@@ -1,12 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, Depends, Body
 from starlette import status
 from starlette.responses import JSONResponse
 
 from src.application.services.auth_service import AuthService
-from src.domain.exceptions import SourceTimeoutException, \
-    UnauthorizedException, SourceUnavailableException, ConflictException, UnhandledException
 from src.domain.oauth_schemas import oauth2_token_schema
 from src.domain.schemas import Tokens, RefreshToken, LoginRequestForm, RegisterRequestForm, AccessToken
 
@@ -29,11 +27,6 @@ async def login(
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
-
-    Raises:
-        HTTPException: If provided email or phone number, or password is invalid (status code 401).
-        HTTPException: If the login service is unavailable (status code 503).
-        HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     tokens = await auth_service.login(form_data)
 
@@ -60,11 +53,6 @@ async def refresh(refresh_token: Annotated[RefreshToken, Depends(oauth2_token_sc
 
     Returns:
         JSONResponse: A JSON object containing access, refresh tokens and token type.
-
-    Raises:
-        HTTPException: If provided refresh token is invalid (status code 401).
-        HTTPException: If the refresh service is unavailable (status code 503).
-        HTTPException: If an unexpected error occurs on the server (status code 500).
     """
     tokens = await auth_service.refresh(str(refresh_token))
 
@@ -91,12 +79,6 @@ async def register(data: Annotated[RegisterRequestForm, Body(...)], auth_service
 
     Returns:
         JSONResponse: A JSON object containing success, error message and status code.
-
-    Raises:
-        HTTPException (503): When RabbitMQ service is not available.
-        HTTPException (504): When waiting time from the 'AuthService' microservice exceeds the timeout (5s).
-        HTTPException (409): When given email or phone number is already in the DB.
-        HTTPException (500): If unknown exception occurs.
     """
     user_data = await auth_service.register(data)
 

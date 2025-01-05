@@ -116,10 +116,11 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             response_body = response.get("body", {})
 
             return status_code, response_body
-
         except asyncio.TimeoutError:
+            self.logger.error(
+                "Auth Service is unavailable. No response. From: RabbitMQAuthAdapter, rpc_call()."
+            )
             raise SourceTimeoutException()
-
         finally:
             await callback_queue.cancel(consumer_tag)
             if not self.channel.is_closed:
