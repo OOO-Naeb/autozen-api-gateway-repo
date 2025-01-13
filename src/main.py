@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.core.middleware.exception_middleware import ExceptionMiddleware
+from src.core.middleware.exceptions_middleware import ExceptionMiddleware
 from src.presentation.api.v1.auth_routes import auth_router
 
 app = FastAPI()

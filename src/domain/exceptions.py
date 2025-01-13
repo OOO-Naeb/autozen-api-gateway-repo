@@ -23,7 +23,7 @@ class AccessDeniedException(Exception):
         return cls().detail
 
 class SourceTimeoutException(Exception):
-    def __init__(self, detail: str = "Source timeout exceeded."):
+    def __init__(self, detail: str = "Source timeout exceeded. We are working on this issue."):
         self.detail = detail
 
     @classmethod
