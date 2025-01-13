@@ -24,8 +24,18 @@ COPY . .
 # Устанавливаем зависимости проекта
 RUN poetry install --no-root
 
+# Устанавливаем wget
+RUN apt-get update && apt-get install -y wget
+
+# Скачиваем и устанавливаем wait-for-it
+RUN wget -q --show-progress --https-only --timestamping \
+    "https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh" \
+    -O /usr/local/bin/wait-for-it
+
+RUN chmod +x /usr/local/bin/wait-for-it
+
 # Открываем порт, на котором будет работать приложение
 EXPOSE 8000
 
 # Команда для запуска приложения
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["wait-for-it", "rabbitmq:5672", "--", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

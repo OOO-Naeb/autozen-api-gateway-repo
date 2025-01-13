@@ -60,9 +60,9 @@ class RabbitMQAuthAdapter(IAuthAdapter):
                 self.exchange = await self.channel.declare_exchange(
                     self.exchange_name, aio_pika.ExchangeType.DIRECT, durable=True
                 )
-            except aio_pika.exceptions.AMQPConnectionError:
+            except aio_pika.exceptions.AMQPConnectionError as e:
                 self.logger.error(
-                    "RabbitMQ service is unavailable. Connection error. From: RabbitMQAuthAdapter, connect()."
+                    f"RabbitMQ service is unavailable. Connection error: {e}. From: RabbitMQAuthAdapter, connect()."
                 )
                 raise SourceUnavailableException(detail="RabbitMQ service is unavailable.")
 
