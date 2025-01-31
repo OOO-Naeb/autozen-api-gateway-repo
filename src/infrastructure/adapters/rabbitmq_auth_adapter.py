@@ -66,7 +66,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
                 )
                 raise SourceUnavailableException(detail="RabbitMQ service is unavailable.")
 
-    async def rpc_call(self, routing_key: str, body: dict, timeout: int = 5) -> tuple:
+    async def rpc_call(self, routing_key: str, body: dict, timeout: int = 5) -> tuple[int, dict] | None:
         """
         ADAPTER METHOD: Send an RPC call through RabbitMQ and wait for the response.
 

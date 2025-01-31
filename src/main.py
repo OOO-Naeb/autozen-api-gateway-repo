@@ -4,23 +4,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.middleware.exceptions_middleware import ExceptionMiddleware
 from src.presentation.api.v1.auth_routes import auth_router
+from src.presentation.api.v1.payment_routes import payment_router
 
 app = FastAPI()
 
 # Routers
 app.include_router(auth_router)
+app.include_router(payment_router)
 
 # Middleware
 app.add_middleware(BaseHTTPMiddleware, dispatch=ExceptionMiddleware(app=app).dispatch)
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
 
 
 if __name__ == "__main__":

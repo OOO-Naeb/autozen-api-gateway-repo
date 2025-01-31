@@ -9,7 +9,7 @@ class IAuthAdapter(ABC):
         pass
 
     @abstractmethod
-    async def rpc_call(self, routing_key: str, body: dict, timeout: int):
+    async def rpc_call(self, routing_key: str, body: dict, timeout: int) -> tuple[int, dict] | None:
         pass
 
     @abstractmethod
