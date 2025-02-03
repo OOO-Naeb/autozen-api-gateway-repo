@@ -1,23 +1,30 @@
-from typing import Literal
+from typing import Literal, Optional, List
 
 import jwt
 
 from src.core.config import settings
 from src.domain.exceptions import UnauthorizedException
+from src.domain.schemas import RolesEnum
 
 
 class JWTValidator:
     def __init__(self):
         self.public_key = settings.JWT_PUBLIC_SECRET_KEY
 
-    async def validate_jwt_token(self, token: str, required_token_type: Literal['access', 'refresh']) -> dict:
+    async def validate_jwt_token(
+            self,
+            token: str,
+            required_token_type: Literal['access', 'refresh'],
+            required_roles: Optional[List[RolesEnum]] = None
+    ) -> dict:
         """
         Validates both types of tokens ('access', 'refresh') based on given token type.
-        Decodes a token and compares its type inside with given one.
+        Decodes a token and compares its type, roles (Optional. Only if roles are given.) inside with given one.
 
         Args:
             token (str): The token to validate.
             required_token_type (Literal['access', 'refresh']): The token type to compare.
+            required_roles (Optional[List['user', 'css_employee', 'css_admin']]): The required roles to compare. Parameter is optional. If nothing is given, it will be ignored.
 
         Returns:
             dict: The decoded token payload.
@@ -30,7 +37,14 @@ class JWTValidator:
             if payload['token_type'] != required_token_type:
                 raise UnauthorizedException()
 
+            if required_roles:
+                if required_roles not in payload['roles']:
+                    raise UnauthorizedException()
+
             return payload
+
+        except jwt.InvalidSignatureError:
+            raise UnauthorizedException()
         except jwt.ExpiredSignatureError:
             raise UnauthorizedException()
         except jwt.InvalidTokenError:

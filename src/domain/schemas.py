@@ -13,10 +13,10 @@ class User(BaseModel):
     password: str
 
 
-class RoleEnum(str, Enum):
+class RolesEnum(str, Enum):
+    USER = 'user'
     CSS_EMPLOYEE = 'css_employee'
     CSS_ADMIN = 'css_admin'
-    USER = 'user'
 
 
 class UserFromDB(BaseModel):
@@ -26,7 +26,7 @@ class UserFromDB(BaseModel):
     middle_name: str
     email: EmailStr
     phone_number: str
-    role: RoleEnum
+    role: RolesEnum
 
 
 class UserToDB(BaseModel):
@@ -36,7 +36,7 @@ class UserToDB(BaseModel):
     email: EmailStr
     phone_number: str
     password: str
-    role: RoleEnum
+    role: RolesEnum
 
 class AccessToken(BaseModel):
     access_token: str
@@ -86,7 +86,7 @@ class RegisterRequestForm(BaseModel):
     email: EmailStr
     phone_number: str
     password: str
-    role: RoleEnum
+    role: RolesEnum
 
 
 class LoginRequestForm(BaseModel):

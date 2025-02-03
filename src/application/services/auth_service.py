@@ -11,13 +11,16 @@ from src.infrastructure.interfaces.auth_adapter_interface import IAuthAdapter
 
 
 class AuthService:
+    """
+    SERVICE: Authentication service class. Contains methods for user login, registration and token refresh. It's being used instead of the use cases in order to avoid unnecessary decomposition.
+    """
     def __init__(self, auth_adapter: Annotated[IAuthAdapter, Depends(RabbitMQAuthAdapter)], jwt_validator: Annotated[JWTValidator, Depends()]) -> None:
         self.auth_adapter = auth_adapter
         self.jwt_validator = jwt_validator
 
     async def login(self, data: LoginRequestForm) -> Tokens:
         """
-        USE CASE METHOD: Log in a user with provided credentials. Passes the query to the 'AuthAdapter'.
+        SERVICE METHOD: Log in a user with provided credentials. Passes the query to the 'AuthAdapter'.
 
         Args:
             data (LoginRequestForm): A form data provided for login, containing either email or phone number, and password.
@@ -29,7 +32,7 @@ class AuthService:
 
     async def refresh(self, refresh_token: str) -> Tokens:
         """
-        USE CASE METHOD: Return a new pair of access and refresh tokens. Passes the query through to the 'AuthAdapter'.
+        SERVICE METHOD: Return a new pair of access and refresh tokens. Passes the query through to the 'AuthAdapter'.
 
         Args:
             refresh_token (RefreshToken): A JSON object containing refresh token in the 'Authorization' header.
@@ -38,13 +41,13 @@ class AuthService:
             Tokens: A JSON object containing access, refresh tokens and token type.
         """
         refresh_token_payload = await self.jwt_validator.validate_jwt_token(refresh_token, required_token_type='refresh')
-        print("Token was validated in AuthUseCase.")
+        print("Token was validated in AuthService.")
 
         return await self.auth_adapter.refresh(refresh_token_payload)
 
     async def register(self, data: RegisterRequestForm) -> UserFromDB:
         """
-        USE CASE METHOD: Register new user with provided data. Passes the query through to the 'AuthAdapter'.
+        SERVICE METHOD: Register new user with provided data. Passes the query through to the 'AuthAdapter'.
 
         Args:
             data (RegisterRequestForm): The data to register.
