@@ -50,7 +50,8 @@ class Tokens(AccessToken, RefreshToken):
     pass
 
 
-class PaymentToken(BaseModel):
+class PaymentTokenResponse(BaseModel):
+    status_code: int
     payment_token: str
 
 

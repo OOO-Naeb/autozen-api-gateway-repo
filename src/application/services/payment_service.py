@@ -3,7 +3,7 @@ from typing import Annotated, Any, Coroutine
 from fastapi import Depends
 
 from src.core.jwt_validator import JWTValidator
-from src.domain.schemas import AccessToken, CardInfo, RolesEnum, PaymentToken
+from src.domain.schemas import AccessToken, CardInfo, RolesEnum, PaymentTokenResponse
 from src.infrastructure.adapters.rabbitmq_payment_adapter import RabbitMQPaymentAdapter
 from src.infrastructure.interfaces.payment_adapter_interface import IPaymentAdapter
 
@@ -24,7 +24,7 @@ class PaymentService:
         self,
         access_token: AccessToken,
         card_info: CardInfo
-    ) -> tuple[int, PaymentToken] | None:
+    ) -> PaymentTokenResponse | None:
         """
         SERVICE METHOD: Add a payment method to the user's account. Passes the query to the 'RabbitMQPaymentAdapter'.
 

@@ -8,7 +8,7 @@ import aio_pika
 
 from src.core.config import settings
 from src.domain.exceptions import SourceUnavailableException, SourceTimeoutException
-from src.domain.schemas import PaymentToken, CardInfo
+from src.domain.schemas import CardInfo, PaymentTokenResponse
 from src.infrastructure.interfaces.payment_adapter_interface import IPaymentAdapter
 
 
@@ -130,7 +130,7 @@ class RabbitMQPaymentAdapter(IPaymentAdapter):
             if not self.channel.is_closed:
                 await self.channel.close()
 
-    async def add_payment_method(self, card_info: CardInfo) -> tuple[int, str] | None:
+    async def add_payment_method(self, card_info: CardInfo) -> PaymentTokenResponse | None:
         """
         ADAPTER METHOD: Get a payment token from the Payment Service.
 
@@ -138,9 +138,9 @@ class RabbitMQPaymentAdapter(IPaymentAdapter):
             card_info (CardInfo): The card information to use.
 
         Returns:
-            tuple[int, PaymentToken] | None: The status code and payment token, or None if no response was received.
+            PaymentTokenResponse | None: An object containing status code and payment token, or None if no response was received.
         """
-        card_info_json = card_info.__dict__
-        status_code, response_body = await self.rpc_call('add_new_payment_method', 'PAYMENT.all', card_info_json)
+        card_info = card_info.__dict__
+        status_code, payment_token = await self.rpc_call('add_new_payment_method', 'PAYMENT.all', card_info)
 
-        return status_code, response_body
+        return PaymentTokenResponse(status_code=status_code, payment_token=payment_token)
