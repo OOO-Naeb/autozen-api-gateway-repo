@@ -52,7 +52,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         if not self.connection or self.connection.is_closed:
             try:
                 self.connection = await aio_pika.connect_robust(
-                    settings.rabbitmq_url,
+                    url=settings.rabbitmq_url,
                     timeout=10,
                     client_properties={'client_name': 'API Gateway Service'}
                 )
@@ -83,7 +83,7 @@ class RabbitMQAuthAdapter(IAuthAdapter):
         """
         await self.connect()
 
-        callback_queue = await self.channel.declare_queue(name=f'FOR-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True, auto_delete=True)
+        callback_queue = await self.channel.declare_queue(name=f'FROM-AUTH-TO-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True, auto_delete=True)
         correlation_id = str(uuid.uuid4())
 
         # Dev logs
@@ -116,11 +116,14 @@ class RabbitMQAuthAdapter(IAuthAdapter):
             response_body = response.get("body", {})
 
             return status_code, response_body
+
         except asyncio.TimeoutError:
             self.logger.error(
                 "Auth Service is unavailable. No response. From: RabbitMQAuthAdapter, rpc_call()."
             )
+
             raise SourceTimeoutException()
+
         finally:
             await callback_queue.cancel(consumer_tag)
             if not self.channel.is_closed:

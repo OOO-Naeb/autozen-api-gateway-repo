@@ -3,7 +3,7 @@ from typing import Literal, Optional, List
 import jwt
 
 from src.core.config import settings
-from src.domain.exceptions import UnauthorizedException
+from src.domain.exceptions import UnauthorizedException, AccessDeniedException
 from src.domain.schemas import RolesEnum
 
 
@@ -38,8 +38,9 @@ class JWTValidator:
                 raise UnauthorizedException()
 
             if required_roles:
-                if required_roles not in payload['roles']:
-                    raise UnauthorizedException()
+                for role in required_roles:
+                    if role.value not in payload['roles']:
+                        raise AccessDeniedException()
 
             return payload
 
@@ -47,5 +48,5 @@ class JWTValidator:
             raise UnauthorizedException()
         except jwt.ExpiredSignatureError:
             raise UnauthorizedException()
-        except jwt.InvalidTokenError:
-            raise UnauthorizedException()
+        except jwt.InvalidTokenError as e:
+            raise e

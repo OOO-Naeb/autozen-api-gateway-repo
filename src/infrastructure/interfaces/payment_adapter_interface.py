@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.domain.schemas import PaymentToken
+from src.domain.schemas import PaymentToken, CardInfo
 
 
 class IPaymentAdapter(ABC):
@@ -9,9 +9,9 @@ class IPaymentAdapter(ABC):
         pass
 
     @abstractmethod
-    async def rpc_call(self) -> tuple[int, dict] | None:
+    async def rpc_call(self, operation_type: str, routing_key: str, body: dict, timeout: int = 5) -> tuple[int, dict] | None:
         pass
 
     @abstractmethod
-    async def get_payment_token(self) -> PaymentToken:
+    async def add_payment_method(self, card_info: CardInfo) -> tuple[int, PaymentToken] | None:
         pass

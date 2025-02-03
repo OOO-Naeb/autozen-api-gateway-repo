@@ -50,5 +50,5 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except Exception:
             return JSONResponse(
                 status_code=500,
-                content={"success": False, "message": UnhandledException.get_default_detail()},
+                content={"success": False, "message": UnhandledException().get_default_detail()},
             )
