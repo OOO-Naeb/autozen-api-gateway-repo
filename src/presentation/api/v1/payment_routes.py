@@ -3,9 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends
 from starlette.responses import JSONResponse
 
-from src.application.services.payment_service import PaymentService
+from src.application.use_cases.add_bank_card import AddBankCardUseCase
+from src.core.dependencies import get_add_bank_card_use_case
 from src.domain.oauth_schemas import oauth2_token_schema
-from src.domain.schemas import PaymentTokenResponse, CardInfo, AccessToken
+from src.presentation.schemas import CardInfo
 
 payment_router = APIRouter(
     tags=["Payment"],
@@ -13,30 +14,61 @@ payment_router = APIRouter(
 )
 
 
-@payment_router.post('/add_payment_method', response_model=PaymentTokenResponse)
-async def add_payment_method(
-        access_token: Annotated[AccessToken, Depends(oauth2_token_schema)],
+@payment_router.post('/bank_card')
+async def add_bank_card(
+        access_token: Annotated[str, Depends(oauth2_token_schema)],
         card_info: Annotated[CardInfo, Body(...)],
-        payment_service: Annotated[PaymentService, Depends(PaymentService)]
+        use_case: Annotated[AddBankCardUseCase, Depends(get_add_bank_card_use_case)]
 ) -> JSONResponse:
     """
-    CONTROLLER: Add a payment method to the user's account. Passes the query to the 'PaymentUseCase'.
+    CONTROLLER: Add a payment method to the user's account. Passes the query to the 'AddBankCardUseCase'.
 
     Args:
-        access_token (AccessToken): The access token to authenticate the user.
+        access_token (str): The access token to authenticate the user.
         card_info (CardInfo): The card information to add to the user's account.
-        payment_service (PaymentService): The payment service to process the payment.
+        use_case (AddBankCardUseCase): The payment use_case to process the operation.
 
     Returns:
         JSONResponse: A JSON response containing status code, message and payment token.
     """
-    response: PaymentTokenResponse = await payment_service.add_payment_method(access_token, card_info)
+    response = await use_case.execute(card_info, str(access_token))
 
     return JSONResponse(
-        status_code=response.status_code,
+        status_code=201,
         content={
             'success': True,
-            'message': 'Payment token added successfully.',
-            'payment_token': response.payment_token,
+            'message': 'Payment method added successfully.',
+            'bank_response': {
+                **response.to_dict()
+            },
         },
     )
+
+
+# @payment_router.post('/bank_account', response_model=PaymentTokenResponse)
+# async def add_bank_account(
+#         access_token: Annotated[AccessToken, Depends(oauth2_token_schema)],
+#         card_info: Annotated[CardInfo, Body(...)],
+#         payment_service: Annotated[PaymentService, Depends(PaymentService)]
+# ) -> JSONResponse:
+#     """
+#     CONTROLLER: Add a payment method to the user's account. Passes the query to the 'PaymentUseCase'.
+#
+#     Args:
+#         access_token (AccessToken): The access token to authenticate the user.
+#         card_info (CardInfo): The card information to add to the user's account.
+#         payment_service (PaymentService): The payment service to process the payment.
+#
+#     Returns:
+#         JSONResponse: A JSON response containing status code, message and payment token.
+#     """
+#     response = await payment_service.add_bank_card(access_token, card_info)
+#
+#     return JSONResponse(
+#         status_code=response.status_code,
+#         content={
+#             'success': True,
+#             'message': 'Payment token added successfully.',
+#             'payment_token': response.payment_token,
+#         },
+#     )

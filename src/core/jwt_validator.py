@@ -3,15 +3,16 @@ from typing import Literal, Optional, List
 import jwt
 
 from src.core.config import settings
-from src.domain.exceptions import UnauthorizedException, AccessDeniedException
-from src.domain.schemas import RolesEnum
+from src.core.exceptions import ApiGatewayError
+from src.domain.interfaces.jwt_validator_interface import IJwtValidator
+from src.presentation.schemas import RolesEnum
 
 
-class JWTValidator:
+class JWTValidator(IJwtValidator):
     def __init__(self):
         self.public_key = settings.JWT_PUBLIC_SECRET_KEY
 
-    async def validate_jwt_token(
+    def validate_token(
             self,
             token: str,
             required_token_type: Literal['access', 'refresh'],
@@ -35,18 +36,33 @@ class JWTValidator:
         try:
             payload = jwt.decode(token, self.public_key, algorithms=[settings.JWT_ALGORITHM], leeway=10)
             if payload['token_type'] != required_token_type:
-                raise UnauthorizedException()
+                raise ApiGatewayError(
+                    status_code=401,
+                    detail="Invalid token."
+                )
 
             if required_roles:
                 for role in required_roles:
                     if role.value not in payload['roles']:
-                        raise AccessDeniedException()
+                        raise ApiGatewayError(
+                            status_code=403,
+                            detail="You don't have permission to access this resource."
+                        )
 
             return payload
 
         except jwt.InvalidSignatureError:
-            raise UnauthorizedException()
+            raise ApiGatewayError(
+                status_code=401,
+                detail="Invalid token signature."
+            )
         except jwt.ExpiredSignatureError:
-            raise UnauthorizedException()
-        except jwt.InvalidTokenError as e:
-            raise e
+            raise ApiGatewayError(
+                status_code=401,
+                detail="Expired token signature."
+            )
+        except jwt.InvalidTokenError:
+            raise ApiGatewayError(
+                status_code=401,
+                detail="Invalid token."
+            )

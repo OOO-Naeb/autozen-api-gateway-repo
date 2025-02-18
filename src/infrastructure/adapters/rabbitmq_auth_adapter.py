@@ -1,216 +1,251 @@
 import asyncio
 import json
-import logging
-import os
 import uuid
 
 import aio_pika
-from starlette.responses import JSONResponse
+from aio_pika import DeliveryMode, Message
 
 from src.core.config import settings
-from src.domain.exceptions import SourceTimeoutException, SourceUnavailableException, NotFoundException, \
-    ConflictException, UnauthorizedException, UnhandledException
-from src.domain.schemas import Tokens, RegisterRequestForm, LoginRequestForm, UserFromDB
-from src.infrastructure.interfaces.auth_adapter_interface import IAuthAdapter
+from src.core.exceptions import ApiGatewayError
+from src.core.logger import LoggerService
+from src.domain.models.auth_requests import LoginRequestDTO, RegisterRequestDTO, RefreshTokenRequestDTO
+from src.domain.models.auth_responses import LoginResponseDTO, RefreshTokenResponseDTO, RegisterResponseDTO
+from src.domain.schemas import RabbitMQResponse
+from src.domain.interfaces.auth_adapter_interface import IAuthAdapter
+from src.infrastructure.exceptions import RabbitMQError, AuthServiceError
 
 
 class RabbitMQAuthAdapter(IAuthAdapter):
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
+    def __init__(
+            self,
+            logger: LoggerService
+    ):
+        self._logger = logger
 
-        log_dir = "logs"
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-
-        log_format = '%(levelname)s:    %(asctime)s - %(name)s: %(message)s'
-        date_format = '%Y-%m-%d %H:%M:%S'
-
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(logging.Formatter(log_format, datefmt=date_format))
-
-        file_handler = logging.FileHandler(os.path.join(log_dir, "auth_log.log"))
-        file_handler.setLevel(logging.ERROR)
-        file_handler.setFormatter(logging.Formatter(log_format, datefmt=date_format))
-
-        self.logger.addHandler(console_handler)
-        self.logger.addHandler(file_handler)
-        self.logger.setLevel(logging.DEBUG)
-
-        self.connection = None
-        self.channel = None
-        self.exchange = None
-        self.exchange_name = 'GATEWAY-AUTH-EXCHANGE.direct'
+        self._connection = None
+        self._channel = None
+        self._exchange = None
+        self._exchange_name = 'API-GATEWAY-to-AUTH-SERVICE-exchange.direct'
+        self._queue_name = 'AUTH.all'
 
     async def connect(self):
         """
-        ADAPTER METHOD: Establish a connection to the RabbitMQ service.
+        Establishes a connection to the RabbitMQ service.
 
         Raises:
-            SourceUnavailableException: When RabbitMQ service is not available.
+            RabbitMQError: When RabbitMQ service is not available.
         """
-        if not self.connection or self.connection.is_closed:
+        if not self._connection or self._connection.is_closed:
             try:
-                self.connection = await aio_pika.connect_robust(
+                self._connection = await aio_pika.connect_robust(
                     url=settings.rabbitmq_url,
                     timeout=10,
-                    client_properties={'client_name': 'API Gateway Service'}
+                    client_properties={'client_name': 'API Gateway'}
                 )
-                self.channel = await self.connection.channel()
-                self.exchange = await self.channel.declare_exchange(
-                    self.exchange_name, aio_pika.ExchangeType.DIRECT, durable=True
+                self._channel = await self._connection.channel()
+                self._exchange = await self._channel.declare_exchange(
+                    name=self._exchange_name,
+                    type=aio_pika.ExchangeType.DIRECT,
+                    durable=True
                 )
             except aio_pika.exceptions.AMQPConnectionError as e:
-                self.logger.error(
-                    f"RabbitMQ service is unavailable. Connection error: {e}. From: RabbitMQAuthAdapter, connect()."
-                )
-                raise SourceUnavailableException(detail="RabbitMQ service is unavailable.")
+                self._logger.critical(f"RabbitMQ service is unavailable. Connection error: {e}. From: RabbitMQAuthAdapter, connect().")
+                raise RabbitMQError(detail="RabbitMQ service is unavailable.")
 
-    async def rpc_call(self, routing_key: str, body: dict, timeout: int = 5) -> tuple[int, dict] | None:
+        if not self._channel or self._channel.is_closed:
+            self._channel = await self._connection.channel()
+            self._exchange = await self._channel.declare_exchange(
+                self._exchange_name,
+                aio_pika.ExchangeType.DIRECT,
+                durable=True
+            )
+
+    async def _make_rpc_call(
+            self,
+            operation_type: str,
+            payload: dict,
+            timeout: int = 5
+    ) -> RabbitMQResponse | None:
         """
-        ADAPTER METHOD: Send an RPC call through RabbitMQ and wait for the response.
+        Sends an RPC call through RabbitMQ to the User Service and waits for the response.
 
         Args:
-            routing_key (str): The routing key for the RabbitMQ queue.
-            body (dict): The request body to send.
-            timeout (int): Timeout for waiting for the response.
+            operation_type (str): The operation type to include in the message body.
+            payload (Dict[str, Any]): The message payload to send.
+            timeout (int): The time to wait for a response before giving up.
 
         Returns:
-            tuple: status_code (int), response_body (dict)
-
-        Raises:
-            SourceTimeoutException: If the response takes too long.
+            RabbitMQResponse containing the Auth Service response.
         """
         await self.connect()
 
-        callback_queue = await self.channel.declare_queue(name=f'FROM-AUTH-TO-GATEWAY-RESPONSE-QUEUE-{uuid.uuid4()}', exclusive=True, auto_delete=True)
+        message_body = {
+            'operation_type': operation_type,
+            **payload
+        }
+
+        callback_queue = await self._channel.declare_queue(
+            name=f'from-AUTH-SERVICE-to-API-GATEWAY.response-{uuid.uuid4()}',
+            exclusive=True,
+            auto_delete=True
+        )
+
+        future = asyncio.get_event_loop().create_future()
         correlation_id = str(uuid.uuid4())
 
-        # Dev logs
-        print("Generated correlation ID from sender ->", correlation_id)
-
-        rabbitmq_response_future = asyncio.get_event_loop().create_future()
-
-        async def on_response(response_message: aio_pika.IncomingMessage):
-            if response_message.correlation_id == correlation_id:
-                rabbitmq_response_future.set_result(response_message)
-                await response_message.ack()
+        async def on_response(received_message: aio_pika.IncomingMessage):
+            if received_message.correlation_id == correlation_id:
+                future.set_result(received_message)
+                await received_message.ack()
 
         consumer_tag = await callback_queue.consume(on_response)
 
-        await self.exchange.publish(
-            aio_pika.Message(
-                body=json.dumps(body).encode(),
-                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
-                correlation_id=correlation_id,
-                reply_to=callback_queue.name,
-            ),
-            routing_key=routing_key,
-        )
-
         try:
-            message = await asyncio.wait_for(rabbitmq_response_future, timeout)
-
-            response = json.loads(message.body.decode())
-            status_code = response.get("status_code", 500)
-            response_body = response.get("body", {})
-
-            return status_code, response_body
-
-        except asyncio.TimeoutError:
-            self.logger.error(
-                "Auth Service is unavailable. No response. From: RabbitMQAuthAdapter, rpc_call()."
+            # Send message
+            await self._exchange.publish(
+                Message(
+                    body=json.dumps(message_body).encode(),
+                    delivery_mode=DeliveryMode.PERSISTENT,
+                    correlation_id=correlation_id,
+                    reply_to=callback_queue.name,
+                ),
+                routing_key=self._queue_name
             )
 
-            raise SourceTimeoutException()
+            # Wait for response
+            message = await asyncio.wait_for(future, timeout)
+            auth_service_response = json.loads(message.body.decode())
+            print("Auth Service Response:", auth_service_response)
 
+            return RabbitMQResponse(
+                status_code=auth_service_response.get('status_code'),
+                body=auth_service_response.get('body'),
+                success=auth_service_response.get('success'),
+                error_message=auth_service_response.get('error_message'),
+                error_origin=auth_service_response.get('error_origin')
+            )
+
+        except asyncio.TimeoutError as e:
+            self._logger.critical(
+                f"Auth Service is not responding. From: RabbitMQAuthAdapter, _make_rpc_call(): {str(e)}")
+            raise AuthServiceError(
+                status_code=504,
+                detail='asyncio.TimeoutError: Auth Service is not responding.'
+            )
+        except aio_pika.exceptions.AMQPException as e:
+            error_message = "RabbitMQ communication error."
+            self._logger.critical(f"{error_message} From: RabbitMQAuthAdapter, _make_rpc_call(): {str(e)}")
+            raise RabbitMQError(
+                status_code=503,
+                detail=error_message
+            )
+        except Exception as e:
+            error_message = "Unhandled error occurred while processing a message."
+            self._logger.critical(f"{error_message} From: RabbitMQAuthAdapter, _make_rpc_call(): {str(e)}")
+            raise ApiGatewayError(
+                status_code=500,
+                detail=error_message
+            )
         finally:
             await callback_queue.cancel(consumer_tag)
-            if not self.channel.is_closed:
-                await self.channel.close()
 
-    async def login(self, data: LoginRequestForm) -> Tokens:
+    async def login(self, login_data: LoginRequestDTO) -> LoginResponseDTO:
         """
-        ADAPTER METHOD: Log in a user by sending the request to 'AuthService' through RabbitMQ with RPC.
+        ADAPTER METHOD: Log in a user by sending the request to Auth Service through RabbitMQ with RPC.
 
         Args:
-            data (LoginRequestForm): A form data provided for login, containing either email or phone number,
+            login_data (LoginRequestDTO): A login domain schema, containing either email or phone number,
             and password.
 
         Returns:
-            Tokens: A JSON object containing access, refresh tokens and token type.
-
-        Raises:
-            UnauthorizedException (401): If credentials are invalid.
-            NotFoundException (404): If the source was not found.
-            SourceTimeoutException (504): When waiting time from 'AuthService' exceeds the timeout.
-            UnhandledException (500): If unknown exception occurs.
+            LoginResponseDTO: Auth Service's response domain schema, containing both access
+            and refresh tokens.
         """
-        status_code, response_body = await self.rpc_call(routing_key='AUTH.login', body=data.model_dump())
+        response = await self._make_rpc_call(
+            operation_type='login',
+            payload=login_data.to_dict()
+        )
 
-        if status_code == 401:
-            raise UnauthorizedException(detail="Invalid credentials provided.")
-        elif status_code == 404:
-            raise NotFoundException(detail="Source was not found.")
-        elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in login(): {status_code} | {response_body}")
-            raise UnhandledException()
+        if not response.success:
+            self._handle_error_response(response)
 
-        return Tokens(**response_body)
+        access_token = response.body.get('access_token')
+        refresh_token = response.body.get('refresh_token')
 
-    async def refresh(self, refresh_token_payload: dict) -> Tokens:
+        return LoginResponseDTO(access_token=access_token, refresh_token=refresh_token)
+
+    async def refresh(self, refresh_token_payload: RefreshTokenRequestDTO) -> RefreshTokenResponseDTO:
         """
-        ADAPTER METHOD: Refresh a user's tokens by sending the request to 'AuthService' through RabbitMQ with RPC.
+        ADAPTER METHOD: Refresh a user's tokens by sending the request to Auth Service through RabbitMQ with RPC.
 
         Args:
-            refresh_token_payload (dict): The user's refresh token payload.
+            refresh_token_payload (RefreshTokenRequestDTO): The user's refresh token payload based on domain schema.
 
         Returns:
-            Tokens: A JSON object containing access and refresh tokens.
-
-        Raises:
-            UnauthorizedException (401): If the refresh token is invalid.
-            NotFoundException (404): If the source was not found.
-            SourceTimeoutException (504): When waiting time from 'AuthService' exceeds the timeout.
-            UnhandledException (500): If unknown exception occurs.
+            RefreshTokenResponseDTO: A domain schema containing access and refresh tokens.
         """
-        status_code, response_body = await self.rpc_call(routing_key='AUTH.refresh', body=refresh_token_payload)
+        response = await self._make_rpc_call(
+            operation_type='refresh',
+            payload=refresh_token_payload.to_dict()
+        )
 
-        if status_code == 401:
-            raise UnauthorizedException(detail="Invalid refresh token.")
-        elif status_code == 404:
-            raise NotFoundException(detail="Source was not found.")
-        elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in refresh(): {status_code} | {response_body}")
-            raise UnhandledException()
+        if not response.success:
+            self._handle_error_response(response)
 
-        return Tokens(**response_body)
+        return RefreshTokenResponseDTO(**response.body)
 
-    async def register(self, data: RegisterRequestForm) -> UserFromDB:
+    async def register(self, data: RegisterRequestDTO) -> RegisterResponseDTO:
         """
-        ADAPTER METHOD: Register a user by sending the request to 'AuthService' through RabbitMQ with RPC.
+        ADAPTER METHOD: Register a user by sending the request to Auth Service through RabbitMQ with RPC.
 
         Args:
-            data (RegisterRequestForm): The user's data to register.
+            data (RegisterRequestDTO): The user's data to register based on domain schema.
 
         Returns:
-            JSONResponse: Response from AuthService with status code and detail message.
+            RegisterResponseDTO: A domain schema containing created user's data.
+        """
+        response = await self._make_rpc_call(
+            operation_type='register',
+            payload=data.to_dict()
+        )
+
+        if not response.success:
+            self._handle_error_response(response)
+
+        print("Response:", response)
+
+        return RegisterResponseDTO(**response.body)
+
+    def _handle_error_response(self, response: RabbitMQResponse):
+        """
+        Handles error responses from the Payment Service.
+
+        Args:
+            response (RabbitMQResponse): The response to handle.
 
         Raises:
-            NotFoundException (404): If user or source was not found.
-            ConflictException (409): When given email or phone number is already in the DB.
-            SourceTimeoutException (504): When waiting time from the 'AuthService' microservice exceeds the timeout (5s).
-            UnhandledException (500): If unknown exception occurs.
+            AuthServiceError: When the response status code is 400, 401, 403, 404 or 500.
+            ApiGatewayError: When the response status code is not handled.
         """
-        status_code, response_body = await self.rpc_call(routing_key='AUTH.register', body=data.model_dump())
-
-        if status_code == 404:
-            raise NotFoundException(detail="User or source not found in AuthService.")
-        elif status_code == 409:
-            raise ConflictException(detail="User's email is already registered in the DB.")
-        elif status_code >= 400:
-            self.logger.error(f"Unknown error in RabbitMQAuthAdapter in register(): {status_code} | {response_body}")
-            raise UnhandledException()
-
-        return UserFromDB(**response_body)
+        if response.status_code in (400, 401, 403, 404):
+            self._logger.error(
+                f"Auth Service error occurred. From: RabbitMQAuthAdapter, _handle_error_response(): {response.status_code} | {response.error_message}")
+            raise AuthServiceError(
+                status_code=response.status_code,
+                detail=response.error_message
+            )
+        elif response.status_code == 500:
+            self._logger.critical(
+                f"Auth Service error occurred. From: RabbitMQAuthAdapter, _handle_error_response(): {response.error_message}")
+            raise AuthServiceError(
+                status_code=response.status_code,
+                detail='Unhandled error occurred in the Auth Service while processing the message.'
+            )
+        else:
+            self._logger.critical(
+                f"API Gateway error occurred. From: RabbitMQAuthAdapter, _handle_error_response(): {response.error_message}")
+            raise ApiGatewayError(
+                status_code=500,
+                detail='Unhandled error occurred while processing the response code.'
+            )
 
