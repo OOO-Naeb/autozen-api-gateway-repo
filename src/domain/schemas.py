@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, TypeVar
 
 from pydantic import BaseModel, EmailStr
 
+from src.domain.models.payment_responses import AddBankAccountResponseDTO, AddBankCardResponseDTO
 from src.presentation.schemas import RolesEnum
 
 
@@ -32,3 +33,6 @@ class RabbitMQResponse:
             error_message=message,
             error_origin=error_origin
         )
+
+
+PaymentServiceResponseDTO = TypeVar("PaymentServiceResponseDTO", bound=Union[AddBankAccountResponseDTO, AddBankCardResponseDTO])  # TODO: Add more response DTOs in the future

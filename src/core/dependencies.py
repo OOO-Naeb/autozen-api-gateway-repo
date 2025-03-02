@@ -1,23 +1,31 @@
+from typing import Any, AsyncGenerator
+
+from src.application.use_cases.add_bank_account import AddBankAccountUseCase
 from src.application.use_cases.add_bank_card import AddBankCardUseCase
 from src.application.use_cases.login import LoginUseCase
 from src.application.use_cases.refresh import RefreshUseCase
 from src.application.use_cases.register import RegisterUseCase
 from src.core.jwt_validator import JWTValidator
 from src.core.logger import LoggerService
+from src.infrastructure.adapters.http_payment_adapter import PaymentHttpClient
 from src.infrastructure.adapters.rabbitmq_auth_adapter import RabbitMQAuthAdapter
-from src.infrastructure.adapters.rabbitmq_payment_adapter import RabbitMQPaymentAdapter
 
 logger = LoggerService(__name__, "api_gateway_log.log")
 jwt_validator = JWTValidator()
-
-
-def get_add_bank_card_use_case():
-    payment_adapter = RabbitMQPaymentAdapter(logger=logger)
-    return AddBankCardUseCase(payment_adapter, jwt_validator)
-
-
 auth_adapter = RabbitMQAuthAdapter(logger=logger)
 
+
+async def get_add_bank_card_use_case():
+    http_client = PaymentHttpClient(logger=logger, base_url="http://localhost:8003/api/v1/payment")
+    use_case = AddBankCardUseCase(http_client, jwt_validator)
+
+    yield use_case
+
+async def get_add_bank_account_use_case() -> AsyncGenerator[AddBankAccountUseCase, Any]:
+    http_client = PaymentHttpClient(logger=logger, base_url="http://localhost:8003/api/v1/payment")
+    use_case = AddBankAccountUseCase(http_client, jwt_validator)
+
+    yield use_case
 
 async def get_login_use_case():
     return LoginUseCase(auth_adapter=auth_adapter)

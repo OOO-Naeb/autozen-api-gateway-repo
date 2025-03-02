@@ -1,13 +1,13 @@
-from src.domain.interfaces.jwt_validator_interface import IJwtValidator
 from src.domain.interfaces.http_payment_adapter_interface import IHttpPaymentAdapter
-from src.domain.models.payment_requests import AddBankCardDTO
-from src.domain.models.payment_responses import AddBankCardResponseDTO
+from src.domain.interfaces.jwt_validator_interface import IJwtValidator
+from src.domain.models.payment_requests import AddBankAccountDTO
+from src.domain.models.payment_responses import AddBankAccountResponseDTO
 from src.presentation.schemas import RolesEnum
 
 
-class AddBankCardUseCase:
+class AddBankAccountUseCase:
     """
-    USE CASE: Create a new payment method (bank card).
+    USE CASE: Create a new payment method (bank account).
     via the Payment Service.
     """
 
@@ -15,7 +15,7 @@ class AddBankCardUseCase:
         self._jwt_validator = jwt_validator
         self._http_payment_adapter = http_payment_adapter
 
-    async def execute(self, domain_schema_data: AddBankCardDTO, access_token: str) -> AddBankCardResponseDTO:
+    async def execute(self, domain_schema_data: AddBankAccountDTO, access_token: str) -> AddBankAccountResponseDTO:
         self._jwt_validator.validate_token(
             access_token,
             required_token_type='access',
@@ -23,7 +23,7 @@ class AddBankCardUseCase:
         )
 
         return await self._http_payment_adapter.post(
-            endpoint="bank_card",
+            endpoint="bank_account",
             payload=domain_schema_data.to_dict(),
-            response_model=AddBankCardResponseDTO
+            response_model=AddBankAccountResponseDTO
         )
