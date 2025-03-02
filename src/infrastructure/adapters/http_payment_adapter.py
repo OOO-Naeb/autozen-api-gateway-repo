@@ -112,6 +112,9 @@ class PaymentHttpClient(IHttpPaymentAdapter):
         elif status_code == 404:
             self._logger.warning(f"Payment Service Error (404): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"User or company with provided ID does not exist.")
+        elif status_code == 409:
+            self._logger.warning(f"Payment Service Error (409): {error_details}")
+            raise PaymentServiceError(status_code=status_code, detail=f"Conflict. {error_details.split('"')[3]}")
         elif status_code == 422:
             self._logger.error(f"Payment Service Error (422): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Unprocessable Entity. From Payment Service: {error_details}")

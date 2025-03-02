@@ -69,6 +69,11 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                     status_code=422,
                     content={"success": False, "message": 'The server could not handle your request. Please, double check the data you are sending.'},
                 )
+            elif exc.status_code == 409:
+                return JSONResponse(
+                    status_code=409,
+                    content={"success": False, "message": f'{exc.detail}'},
+                )
             elif exc.status_code == 404:
                 return JSONResponse(
                     status_code=404,
