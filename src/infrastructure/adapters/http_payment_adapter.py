@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Type
 from src.core.exceptions import ApiGatewayError
 from src.core.logger import LoggerService
 from src.domain.interfaces.http_payment_adapter_interface import IHttpPaymentAdapter
-from src.domain.schemas import PaymentServiceResponseDTO
+from src.domain.models.payment_responses import PaymentServiceResponseDTO
 from src.infrastructure.exceptions import PaymentServiceError
 
 
@@ -27,6 +27,7 @@ class PaymentHttpClient(IHttpPaymentAdapter):
     ) -> PaymentServiceResponseDTO:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = {"Content-Type": "application/json"}
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(method, url, json=payload, params=params, headers=headers)
@@ -38,8 +39,7 @@ class PaymentHttpClient(IHttpPaymentAdapter):
             self._handle_payment_service_error(e)
         except httpx.RequestError as e:
             if "Connection refused" in str(e):
-                self._logger.critical(f"Payment Service is not available: {e}")
-
+                self._logger.critical(f"Payment Service is not available: {e}.")
                 raise PaymentServiceError(status_code=504, detail="Payment Service is not available.")
             self._logger.critical(f"Request error occurred. Probably, the Payment Service is not responding: {e}.")
             raise ApiGatewayError(status_code=500, detail=str(e))
@@ -51,21 +51,18 @@ class PaymentHttpClient(IHttpPaymentAdapter):
             data = response.json()
         except Exception as e:
             self._logger.error(f"Error parsing JSON response: {e}")
+            raise ApiGatewayError(status_code=500, detail="Invalid JSON response.")
 
-            raise ApiGatewayError(status_code=500, detail="Invalid JSON response")
-
-        # Если ответ обёрнут в ключ 'content', берем его, иначе берем data целиком.
         content = data.get('content') if isinstance(data, dict) and 'content' in data else data
+
         if not isinstance(content, dict):
             self._logger.error(f"Invalid response format: {content}")
-
-            raise ApiGatewayError(status_code=500, detail="Invalid response format")
+            raise ApiGatewayError(status_code=500, detail="Invalid response format.")
         try:
             return response_model(**content)
         except Exception as e:
-            self._logger.error(f"Error constructing response model: {e}")
-
-            raise ApiGatewayError(status_code=500, detail="Error processing response data")
+            self._logger.error(f"Error constructing response model: {e}.")
+            raise ApiGatewayError(status_code=500, detail="Error processing response data.")
 
     async def post(
         self,
@@ -101,20 +98,20 @@ class PaymentHttpClient(IHttpPaymentAdapter):
 
     def _handle_payment_service_error(self, e: httpx.HTTPStatusError) -> None:
         status_code = e.response.status_code
-        error_details = e.response.text
+        error_details = dict(e.response.json()).get("detail")
 
         if status_code == 400:
             self._logger.error(f"Payment Service Error (400): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Bad request. From Payment Service: {error_details}")
         elif status_code == 403:
             self._logger.warning(f"Payment Service Error (403): {error_details}")
-            raise PaymentServiceError(status_code=status_code, detail=f"Forbidden. From Payment Service: {error_details.split('"')[3]}")
+            raise PaymentServiceError(status_code=status_code, detail=f"Forbidden. From Payment Service: {error_details}")
         elif status_code == 404:
             self._logger.warning(f"Payment Service Error (404): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"User or company with provided ID does not exist.")
         elif status_code == 409:
             self._logger.warning(f"Payment Service Error (409): {error_details}")
-            raise PaymentServiceError(status_code=status_code, detail=f"Conflict. {error_details.split('"')[3]}")
+            raise PaymentServiceError(status_code=status_code, detail=f"Conflict. {error_details}")
         elif status_code == 422:
             self._logger.error(f"Payment Service Error (422): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Unprocessable Entity. From Payment Service: {error_details}")
@@ -122,5 +119,5 @@ class PaymentHttpClient(IHttpPaymentAdapter):
             self._logger.critical(f"Payment Service Error (500): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Internal Server Error. From Payment Service: {error_details}")
         else:
-            self._logger.error(f"Payment Service Error ({status_code}): {error_details}")
-            raise PaymentServiceError(status_code=status_code, detail=f"Unexpected error from Payment Service: {error_details}")
+            self._logger.critical(f"Unhandled Payment Service Error ({status_code}): {error_details}.")
+            raise PaymentServiceError(status_code=status_code, detail=f"Unexpected error from Payment Service: {error_details}.")

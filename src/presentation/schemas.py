@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import date, datetime
 from decimal import Decimal
@@ -107,7 +108,7 @@ class AddBankAccountRequest(BaseModel):
     ]
     account_number: Annotated[
         str,
-        Field(min_length=20, max_length=20, description="Account number in IBAN format. Must start with 'KZ' followed by 18 digits.")
+        Field(description="Account number in IBAN format. Must start with 'KZ' followed by 18 digits.")
     ]
     company_id: Annotated[UUID, Field(description="Unique identifier of the company.")]
 
@@ -188,10 +189,10 @@ class LoginRequestSchema(BaseModel):
         Raises:
             ValueError: If the email and phone number both are not provided.
         """
+        if isinstance(values, bytes):
+            values = json.loads(values.decode("utf-8"))
         email = values.get('email')
         phone_number = values.get('phone_number')
-
         if not email and not phone_number:
             raise ValueError('Either email or phone number must be provided.')
-
         return values

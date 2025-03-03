@@ -2,7 +2,7 @@ from abc import abstractmethod, ABC
 
 from src.domain.models.auth_requests import LoginRequestDTO, RegisterRequestDTO, RefreshTokenRequestDTO
 from src.domain.models.auth_responses import LoginResponseDTO, RegisterResponseDTO, RefreshTokenResponseDTO
-from src.domain.schemas import RabbitMQResponse
+from src.domain.models.rabbitmq_response import RabbitMQResponse
 
 
 class IAuthAdapter(ABC):

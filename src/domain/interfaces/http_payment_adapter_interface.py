@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional, Type
 
 import httpx
 
-from src.domain.schemas import PaymentServiceResponseDTO
+from src.domain.models.payment_responses import PaymentServiceResponseDTO
 
 
 class IHttpPaymentAdapter(ABC):

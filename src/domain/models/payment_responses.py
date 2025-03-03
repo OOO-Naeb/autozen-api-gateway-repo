@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TypeVar, Union
 from uuid import UUID, uuid4
 
 
@@ -72,3 +72,6 @@ class AddBankAccountResponseDTO:
             created_at=self.created_at,
             updated_at=self.updated_at
         )
+
+
+PaymentServiceResponseDTO = TypeVar("PaymentServiceResponseDTO", bound=Union[AddBankAccountResponseDTO, AddBankCardResponseDTO])  # TODO: Add more response DTOs in the future

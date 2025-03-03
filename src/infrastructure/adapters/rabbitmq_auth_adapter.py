@@ -10,7 +10,7 @@ from src.core.exceptions import ApiGatewayError
 from src.core.logger import LoggerService
 from src.domain.models.auth_requests import LoginRequestDTO, RegisterRequestDTO, RefreshTokenRequestDTO
 from src.domain.models.auth_responses import LoginResponseDTO, RefreshTokenResponseDTO, RegisterResponseDTO
-from src.domain.schemas import RabbitMQResponse
+from src.domain.models.rabbitmq_response import RabbitMQResponse
 from src.domain.interfaces.auth_adapter_interface import IAuthAdapter
 from src.infrastructure.exceptions import RabbitMQError, AuthServiceError
 
