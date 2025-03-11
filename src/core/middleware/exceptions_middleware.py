@@ -54,43 +54,25 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                     },
                 )
         except PaymentServiceError as exc:
-            if exc.status_code == 504:
+            if exc.status_code in (504, 500):
                 return JSONResponse(
-                    status_code=504,
+                    status_code=exc.status_code,
                     content={"success": False, "message": 'Something went wrong. Please try again later.'},
                 )
-            elif exc.status_code == 500:
+            elif exc.status_code in (422, 400):
                 return JSONResponse(
-                    status_code=500,
-                    content={"success": False, "message": 'Something went wrong. Please try again later.'},
-                )
-            elif exc.status_code == 422:
-                return JSONResponse(
-                    status_code=422,
+                    status_code=exc.status_code,
                     content={"success": False, "message": 'The server could not handle your request. Please, double check the data you are sending.'},
                 )
-            elif exc.status_code == 409:
+            elif exc.status_code in (409, 404, 403):
                 return JSONResponse(
-                    status_code=409,
+                    status_code=exc.status_code,
                     content={"success": False, "message": f'{exc.detail}'},
                 )
-            elif exc.status_code == 404:
+            elif exc.status_code == 402:
                 return JSONResponse(
-                    status_code=404,
-                    content={"success": False, "message": f'{exc.detail}'},
-                )
-            elif exc.status_code == 403:
-                return JSONResponse(
-                    status_code=403,
-                    content={"success": False, "message": f'{exc.detail}'},
-                )
-            elif exc.status_code == 400:
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "success": False,
-                        "message": 'The server could not handle your request. Please, double check the data you are sending.'
-                    },
+                    status_code=402,
+                    content={"success": False, "message": f'Invalid transaction. {exc.detail}'}
                 )
         except RabbitMQError:
             return JSONResponse(

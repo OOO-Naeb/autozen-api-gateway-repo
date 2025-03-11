@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -68,14 +69,14 @@ class AddBankAccountDTO:
     Domain DTO schema for adding a bank account to the company's account.
     """
     account_holder_name: str
-    account_number: str
+    account_number: str  # TODO: Add more detailed validation
     company_id: UUID
 
     def __post_init__(self) -> None:
         if not self.account_holder_name.strip():
-            raise ValueError("account_holder_name cannot be empty or consist only of spaces.")
+            raise ValueError("Account holder_name cannot be empty or consist only of spaces.")
         if not self.account_number.strip():
-            raise ValueError("account_number cannot be empty or consist only of spaces.")
+            raise ValueError("Account number cannot be empty or consist only of spaces.")
 
     def to_dict(self) -> dict:
         """
@@ -84,6 +85,35 @@ class AddBankAccountDTO:
         return dict(
             account_holder_name=self.account_holder_name,
             account_number=self.account_number,
-            company_id= str(self.company_id)
+            company_id=str(self.company_id)
+        )
+
+
+@dataclass
+class P2BTransactionDTO:
+    """
+    Domain DTO schema needed for the representation of data required for P2B (bank card -> bank account)
+    transaction.
+    """
+    bank_account_number: str
+    amount: Decimal
+
+    def __post_init__(self) -> None:
+        if not self.bank_account_number.strip():
+            raise ValueError("Account number cannot be empty or consist only of spaces.")
+
+        if not re.fullmatch(r"^KZ\d{18}$", self.bank_account_number):
+            raise ValueError("Account number must be a valid Kazakhstan IBAN (e.g., 'KZ' followed by 18 digits).")
+
+        if self.amount <= 0:
+            raise ValueError("Transaction amount must be greater than zero.")
+
+    def to_dict(self) -> dict:
+        """
+        Convert the domain DTO object to a dictionary.
+        """
+        return dict(
+            bank_account_number=self.bank_account_number,
+            amount=self.amount
         )
 

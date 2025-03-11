@@ -19,7 +19,6 @@ class APIResponse(BaseModel, Generic[ApiResponseData]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-
 class AddBankCardRequest(BaseModel):
     """
     Pydantic schema for the card information.
@@ -154,7 +153,6 @@ class AddBankAccountResponse(BaseModel):
     updated_at: Annotated[datetime, Field(description="Date of the bank account last update.")]
 
 
-
 class RolesEnum(str, Enum):
     USER = 'user'
     CSS_EMPLOYEE = 'css_employee'
@@ -196,3 +194,41 @@ class LoginRequestSchema(BaseModel):
         if not email and not phone_number:
             raise ValueError('Either email or phone number must be provided.')
         return values
+
+
+class P2BTransactionRequest(BaseModel):
+    """
+    Pydantic schema for P2B (bank card -> bank account) transaction.
+    """
+    bank_account_number: str = Field(
+        description="Account number in IBAN format. Must start with 'KZ' followed by 18 digits."
+    )
+    amount: Decimal = Field(gt=0, description="Transaction amount. Must be greater than zero.")
+
+    @field_validator("bank_account_number")
+    @classmethod
+    def validate_account_number(cls, value: str) -> str:
+        """
+        Validates that the account number is in a valid Kazakhstan IBAN format:
+        It must start with 'KZ' followed by exactly 18 digits.
+        """
+        if not value.strip():
+            raise ValueError("Account number cannot be empty or consist only of spaces.")
+
+        if not re.fullmatch(r"^KZ\d{18}$", value):
+            raise ValueError("Account number must be a valid Kazakhstan IBAN (e.g., 'KZ' followed by 18 digits).")
+
+        return value
+
+
+class P2BTransactionResponse(BaseModel):
+    """
+    Pydantic schema for P2B (bank card -> bank account) transaction response.
+    """
+    transaction_id: UUID
+    transferred_amount: Decimal = Field(gt=0, description="Transferred amount. Must be greater than zero.")
+    currency: str
+    updated_bank_card_balance: Decimal
+    updated_bank_account_balance: Decimal
+    transaction_fee: Decimal = Field(gt=0, description="Transaction fee. Must be greater than zero.")
+

@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator
 from src.application.use_cases.add_bank_account import AddBankAccountUseCase
 from src.application.use_cases.add_bank_card import AddBankCardUseCase
 from src.application.use_cases.login import LoginUseCase
+from src.application.use_cases.p2b_transaction import ProceedP2BTransactionUseCase
 from src.application.use_cases.refresh import RefreshUseCase
 from src.application.use_cases.register import RegisterUseCase
 from src.core.jwt_validator import JWTValidator
@@ -21,11 +22,20 @@ async def get_add_bank_card_use_case():
 
     yield use_case
 
+
 async def get_add_bank_account_use_case() -> AsyncGenerator[AddBankAccountUseCase, Any]:
     http_client = PaymentHttpClient(logger=logger, base_url="http://localhost:8003/api/v1/payment")
     use_case = AddBankAccountUseCase(http_client, jwt_validator)
 
     yield use_case
+
+
+async def get_proceed_p2b_transaction_use_case() -> AsyncGenerator[ProceedP2BTransactionUseCase, Any]:
+    http_client = PaymentHttpClient(logger=logger, base_url="http://localhost:8003/api/v1/payment")
+    use_case = ProceedP2BTransactionUseCase(http_client, jwt_validator)
+
+    yield use_case
+
 
 async def get_login_use_case():
     return LoginUseCase(auth_adapter=auth_adapter)

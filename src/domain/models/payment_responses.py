@@ -14,7 +14,7 @@ class AddBankCardResponseDTO:
     is_active: bool
     card_holder_first_name: str
     card_holder_last_name: str
-    card_last_four: str # Exactly 4 digits
+    card_last_four: str  # Exactly 4 digits
     expiration_date: str  # Format: MM/YY
     payment_token: str
     balance: Decimal = Decimal("0.00")
@@ -74,4 +74,48 @@ class AddBankAccountResponseDTO:
         )
 
 
-PaymentServiceResponseDTO = TypeVar("PaymentServiceResponseDTO", bound=Union[AddBankAccountResponseDTO, AddBankCardResponseDTO])  # TODO: Add more response DTOs in the future
+@dataclass
+class P2BTransactionResponseDTO:
+    """
+    Domain DTO schema representing the response after a successful P2B transaction.
+    """
+    transaction_id: UUID
+    transferred_amount: Decimal
+    currency: str
+    updated_bank_card_balance: Decimal
+    updated_bank_account_balance: Decimal
+    transaction_fee: Decimal
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    def __post_init__(self) -> None:
+        if self.transferred_amount <= 0:
+            raise ValueError("Transferred amount must be greater than zero.")
+
+        if self.updated_bank_card_balance < 0:
+            raise ValueError("Updated bank card balance cannot be negative.")
+
+        if self.updated_bank_account_balance < 0:
+            raise ValueError("Updated bank account balance cannot be negative.")
+
+        if self.transaction_fee < 0:
+            raise ValueError("Transaction fee cannot be negative.")
+
+        if not self.currency or len(self.currency) != 3:
+            raise ValueError("Currency must be a valid 3-letter ISO code (e.g., 'KZT').")
+
+    def to_dict(self) -> dict:
+        """
+        Convert the domain DTO object to a dictionary.
+        """
+        return dict(
+            transaction_id=str(self.transaction_id),
+            transferred_amount=str(self.transferred_amount),
+            currency=self.currency,
+            updated_bank_card_balance=str(self.updated_bank_card_balance),
+            updated_bank_account_balance=str(self.updated_bank_account_balance),
+            transaction_fee=str(self.transaction_fee),
+            timestamp=self.timestamp.isoformat()
+        )
+
+
+PaymentServiceResponseDTO = TypeVar("PaymentServiceResponseDTO", bound=Union[AddBankAccountResponseDTO, AddBankCardResponseDTO, P2BTransactionResponseDTO])  # TODO: Add more response DTOs in the future

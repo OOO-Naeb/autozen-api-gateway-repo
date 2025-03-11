@@ -18,15 +18,19 @@ class PaymentHttpClient(IHttpPaymentAdapter):
         self._logger = logger
 
     async def _request(
-        self,
-        method: str,
-        endpoint: str,
-        response_model: Type[PaymentServiceResponseDTO],
-        payload: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
+            self,
+            method: str,
+            endpoint: str,
+            response_model: Type[PaymentServiceResponseDTO],
+            payload: Optional[Dict[str, Any]] = None,
+            params: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, str]] = None
     ) -> PaymentServiceResponseDTO:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        headers = {"Content-Type": "application/json"}
+
+        default_headers = {"Content-Type": "application/json"}
+
+        headers = {**default_headers, **(headers or {})}
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -65,36 +69,40 @@ class PaymentHttpClient(IHttpPaymentAdapter):
             raise ApiGatewayError(status_code=500, detail="Error processing response data.")
 
     async def post(
-        self,
-        endpoint: str,
-        payload: Dict[str, Any],
-        response_model: Type[PaymentServiceResponseDTO]
+            self,
+            endpoint: str,
+            payload: Dict[str, Any],
+            response_model: Type[PaymentServiceResponseDTO],
+            headers: Optional[Dict[str, str]] = None
     ) -> PaymentServiceResponseDTO:
-        return await self._request("POST", endpoint, response_model, payload=payload)
+        return await self._request("POST", endpoint, response_model, payload=payload, headers=headers)
 
     async def get(
-        self,
-        response_model: Type[PaymentServiceResponseDTO],
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None
+            self,
+            response_model: Type[PaymentServiceResponseDTO],
+            endpoint: str,
+            params: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, str]] = None
     ) -> PaymentServiceResponseDTO:
-        return await self._request("GET", endpoint, response_model, params=params)
+        return await self._request("GET", endpoint, response_model, params=params, headers=headers)
 
     async def put(
-        self,
-        endpoint: str,
-        payload: Dict[str, Any],
-        response_model: Type[PaymentServiceResponseDTO]
+            self,
+            endpoint: str,
+            payload: Dict[str, Any],
+            response_model: Type[PaymentServiceResponseDTO],
+            headers: Optional[Dict[str, str]] = None
     ) -> PaymentServiceResponseDTO:
-        return await self._request("PUT", endpoint, response_model, payload=payload)
+        return await self._request("PUT", endpoint, response_model, payload=payload, headers=headers)
 
     async def delete(
-        self,
-        response_model: Type[PaymentServiceResponseDTO],
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None
+            self,
+            response_model: Type[PaymentServiceResponseDTO],
+            endpoint: str,
+            params: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, str]] = None
     ) -> PaymentServiceResponseDTO:
-        return await self._request("DELETE", endpoint, response_model, params=params)
+        return await self._request("DELETE", endpoint, response_model, params=params, headers=headers)
 
     def _handle_payment_service_error(self, e: httpx.HTTPStatusError) -> None:
         status_code = e.response.status_code
@@ -103,6 +111,9 @@ class PaymentHttpClient(IHttpPaymentAdapter):
         if status_code == 400:
             self._logger.error(f"Payment Service Error (400): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Bad request. From Payment Service: {error_details}")
+        elif status_code == 402:
+            self._logger.warning(f"Payment Service Error (402): {error_details}")
+            raise PaymentServiceError(status_code=status_code, detail=error_details)
         elif status_code == 403:
             self._logger.warning(f"Payment Service Error (403): {error_details}")
             raise PaymentServiceError(status_code=status_code, detail=f"Forbidden. From Payment Service: {error_details}")
